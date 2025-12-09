@@ -1,0 +1,23 @@
+services:
+  api:
+    build:
+      context: .
+    container_name: ai-mentor-api
+    env_file:
+      - .env
+    environment:
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:alpine
+    environment:
+      POSTGRES_PASSWORD: password
+    network_mode: host
+    volumes:
+      - postgres:/var/lib/postgresql/data
+
+volumes:
+  postgres:

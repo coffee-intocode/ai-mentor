@@ -1,0 +1,168 @@
+# AI MENTOR API - CURL COMMANDS QUICK REFERENCE
+# Base URL: http://localhost:8080
+# API Prefix: /api/v1
+# Full Path: http://localhost:8080/api/v1/{endpoint}
+
+# ========================================
+# USERS (/users)
+# ========================================
+
+# Create user
+curl -X POST "http://localhost:8080/api/v1/users" -H "Content-Type: application/json" -d '{"email": "test@example.com", "username": "testuser"}'
+
+# Get user by ID
+curl -X GET "http://localhost:8080/api/v1/users/1"
+
+# Get user by email
+curl -X GET "http://localhost:8080/api/v1/users/email/test@example.com"
+
+# Update user
+curl -X PATCH "http://localhost:8080/api/v1/users/1" -H "Content-Type: application/json" -d '{"username": "newusername"}'
+
+# Delete user
+curl -X DELETE "http://localhost:8080/api/v1/users/1"
+
+
+# ========================================
+# CONVERSATIONS (/conversations)
+# ========================================
+
+# Create conversation
+curl -X POST "http://localhost:8080/api/v1/conversations" -H "Content-Type: application/json" -d '{"user_id": 1, "title": "My Chat"}'
+
+# Get conversation by ID
+curl -X GET "http://localhost:8080/api/v1/conversations/1"
+
+# Get all conversations for user
+curl -X GET "http://localhost:8080/api/v1/conversations/user/1"
+
+# Update conversation
+curl -X PATCH "http://localhost:8080/api/v1/conversations/1" -H "Content-Type: application/json" -d '{"title": "Updated Title"}'
+
+# Delete conversation
+curl -X DELETE "http://localhost:8080/api/v1/conversations/1"
+
+
+# ========================================
+# MESSAGES (/messages)
+# ========================================
+
+# Create user message
+curl -X POST "http://localhost:8080/api/v1/messages" -H "Content-Type: application/json" -d '{"conversation_id": 1, "role": "user", "content": "Hello!"}'
+
+# Create assistant message
+curl -X POST "http://localhost:8080/api/v1/messages" -H "Content-Type: application/json" -d '{"conversation_id": 1, "role": "assistant", "content": "Hi there!"}'
+
+# Create system message
+curl -X POST "http://localhost:8080/api/v1/messages" -H "Content-Type: application/json" -d '{"conversation_id": 1, "role": "system", "content": "System prompt"}'
+
+# Get message by ID
+curl -X GET "http://localhost:8080/api/v1/messages/1"
+
+# Get all messages in conversation
+curl -X GET "http://localhost:8080/api/v1/messages/conversation/1"
+
+
+# ========================================
+# CHAT (/chat) - Integrated endpoint
+# ========================================
+
+# Send chat message (creates new conversation)
+curl -X POST "http://localhost:8080/api/v1/chat" -H "Content-Type: application/json" -d '{"user_id": 1, "message": "What is AI?"}'
+
+# Send chat message (existing conversation)
+curl -X POST "http://localhost:8080/api/v1/chat" -H "Content-Type: application/json" -d '{"user_id": 1, "conversation_id": 1, "message": "Tell me more"}'
+
+
+# ========================================
+# AI CHAT (Pydantic AI with Vercel SDK)
+# ========================================
+
+# Get configuration (models and tools)
+curl -X GET "http://localhost:8080/api/v1/configure"
+
+# AI chat - basic
+curl -X POST "http://localhost:8080/api/v1/chat" -H "Content-Type: application/json" -d '{"messages": [{"role": "user", "content": "Hello"}], "model": "anthropic:claude-sonnet-4-5", "builtinTools": []}'
+
+# AI chat - with web search
+curl -X POST "http://localhost:8080/api/v1/chat" -H "Content-Type: application/json" -d '{"messages": [{"role": "user", "content": "Latest AI news?"}], "model": "anthropic:claude-sonnet-4-5", "builtinTools": ["web_search"]}'
+
+# AI chat - with code execution
+curl -X POST "http://localhost:8080/api/v1/chat" -H "Content-Type: application/json" -d '{"messages": [{"role": "user", "content": "Write fibonacci in Python"}], "model": "openai-responses:gpt-5", "builtinTools": ["code_execution"]}'
+
+# AI chat - multiple tools
+curl -X POST "http://localhost:8080/api/v1/chat" -H "Content-Type: application/json" -d '{"messages": [{"role": "user", "content": "Search and code"}], "model": "openai-responses:gpt-5", "builtinTools": ["web_search", "code_execution"]}'
+
+# AI chat - with conversation history
+curl -X POST "http://localhost:8080/api/v1/chat" -H "Content-Type: application/json" -d '{"messages": [{"role": "user", "content": "What is Python?"}, {"role": "assistant", "content": "Python is a language..."}, {"role": "user", "content": "Show example"}], "model": "anthropic:claude-sonnet-4-5", "builtinTools": []}'
+
+
+# ========================================
+# TESTING WORKFLOW
+# ========================================
+
+# 1. Create test user
+curl -X POST "http://localhost:8080/api/v1/users" -H "Content-Type: application/json" -d '{"email": "test@example.com", "username": "tester"}'
+
+# 2. Create conversation for user
+curl -X POST "http://localhost:8080/api/v1/conversations" -H "Content-Type: application/json" -d '{"user_id": 1, "title": "Test Chat"}'
+
+# 3. Send chat message
+curl -X POST "http://localhost:8080/api/v1/chat" -H "Content-Type: application/json" -d '{"user_id": 1, "conversation_id": 1, "message": "Hello AI!"}'
+
+# 4. Get conversation messages
+curl -X GET "http://localhost:8080/api/v1/messages/conversation/1"
+
+# 5. Get all user conversations
+curl -X GET "http://localhost:8080/api/v1/conversations/user/1"
+
+
+# ========================================
+# ERROR TESTING
+# ========================================
+
+# Non-existent resource (404)
+curl -X GET "http://localhost:8080/api/v1/users/9999"
+
+# Invalid email (422)
+curl -X POST "http://localhost:8080/api/v1/users" -H "Content-Type: application/json" -d '{"email": "not-an-email"}'
+
+# Invalid message role (422)
+curl -X POST "http://localhost:8080/api/v1/messages" -H "Content-Type: application/json" -d '{"conversation_id": 1, "role": "invalid", "content": "test"}'
+
+
+# ========================================
+# USEFUL CURL OPTIONS
+# ========================================
+
+# Pretty print with jq
+curl -X GET "http://localhost:8080/api/v1/users/1" | jq
+
+# Show headers
+curl -X GET "http://localhost:8080/api/v1/users/1" -v
+
+# Silent mode
+curl -X GET "http://localhost:8080/api/v1/users/1" -s
+
+# Save to file
+curl -X GET "http://localhost:8080/api/v1/users/1" -o response.json
+
+# Include response headers in output
+curl -X GET "http://localhost:8080/api/v1/users/1" -i
+
+
+# ========================================
+# AVAILABLE MODELS
+# ========================================
+# - anthropic:claude-sonnet-4-5 (web_search, code_execution)
+# - openai-responses:gpt-5 (web_search, code_execution, image_generation)
+# - google-gla:gemini-2.5-pro (web_search, code_execution)
+
+
+# ========================================
+# AVAILABLE TOOLS
+# ========================================
+# - web_search: Search the web
+# - code_execution: Execute code
+# - image_generation: Generate images (GPT-5 only)
+
