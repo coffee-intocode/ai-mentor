@@ -7,10 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import get_db_session
 from .services import (
-    UserService,
+    ChatService,
     ConversationService,
     MessageService,
-    ChatService,
+    ReductoService,
+    UserService,
 )
 
 
@@ -41,3 +42,7 @@ def get_chat_service(db: AsyncSession = Depends(get_db)) -> ChatService:
     """Get chat service dependency."""
     return ChatService(db)
 
+
+def get_reducto_service(db: AsyncSession = Depends(get_db)) -> ReductoService:
+    """Get reducto service dependency."""
+    return ReductoService(db)

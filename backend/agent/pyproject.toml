@@ -26,6 +26,7 @@ dependencies = [
     "uvicorn>=0.37.0",
     "watchfiles>=1.1.0",
     "playwright>=1.49.0",
+    "reductoai>=0.14.0",
 ]
 
 [tool.setuptools.packages.find]

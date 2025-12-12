@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     openai_api_key: str | None = None
     google_api_key: str | None = None
+    reducto_api_key: str | None = None
 
     # Security (add these as needed)
     # secret_key: str = "your-secret-key-change-in-production"

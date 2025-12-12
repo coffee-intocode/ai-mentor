@@ -19,6 +19,7 @@ AsyncSessionLocal = None
 
 if SUPABASE_URL:
     # Create async engine with connection pooling
+    # Using direct connection (port 5432) - supports prepared statements
     async_engine = create_async_engine(
         SUPABASE_URL,
         echo=True,  # Set to False in production

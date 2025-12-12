@@ -2,9 +2,9 @@
 
 from fastapi import APIRouter, Depends, status
 
-from ..dependencies import get_chat_service
+from ..dependencies import get_chat_service, get_reducto_service
 from ..schemas.chat import ChatRequest, ChatResponse
-from ..services import ChatService
+from ..services import ChatService, ReductoService
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -21,3 +21,9 @@ async def chat(
 ):
     """Process a chat message and return AI response."""
     return await service.process_chat(chat_data)
+
+
+@router.get("/reducto")
+async def reducto(service: ReductoService = Depends(get_reducto_service)):
+    """Get the reducto document."""
+    return await service.upload_document()
