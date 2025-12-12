@@ -16,6 +16,7 @@ from .routers import (
     ai_chat_router,
     chat_router,
     conversations_router,
+    documents_router,
     messages_router,
     users_router,
 )

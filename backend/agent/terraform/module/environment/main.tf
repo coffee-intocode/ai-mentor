@@ -7,16 +7,17 @@ module "network" {
   name               = var.name
 }
 
-module "database" {
-  source = "../database"
+# Commented out - using Supabase instead of provisioning RDS
+# module "database" {
+#   source = "../database"
 
-  security_groups = [module.network.database_security_group]
-  subnets         = module.network.database_subnets
-  name            = var.name
-  vpc_name        = module.network.vpc_name
+#   security_groups = [module.network.database_security_group]
+#   subnets         = module.network.database_subnets
+#   name            = var.name
+#   vpc_name        = module.network.vpc_name
 
-  depends_on = [module.network]
-}
+#   depends_on = [module.network]
+# }
 
 module "cluster" {
   source = "../cluster"
