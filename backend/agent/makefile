@@ -23,7 +23,7 @@
 #   Override with ENV=<environment> (e.g., ENV=staging, ENV=dev, ENV=prod)
 
 MIGRATION_DIR := alembic
-AWS_ACCOUNT_ID := 565551666976
+AWS_ACCOUNT_ID := 768794570622
 AWS_DEFAULT_REGION := us-east-2
 AWS_ECR_DOMAIN := $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_DEFAULT_REGION).amazonaws.com
 GIT_SHA := $(shell git rev-parse HEAD)
