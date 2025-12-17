@@ -62,8 +62,7 @@ class IngestionService:
             return document
 
         except Exception as e:
-            document.status = "failed"
-            await self.db.commit()
+            await self.db.rollback()
             raise e
 
     def _chunk_text(self, text: str) -> List[Tuple[str, str]]:
