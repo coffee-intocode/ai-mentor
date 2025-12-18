@@ -71,8 +71,10 @@ module "service" {
 }
 
 
-# Create Route53 record for this environment's subdomain
+# Create Route53 record for this environment's subdomain (only if custom domain is configured)
 resource "aws_route53_record" "environment" {
+  count = var.route53_zone_id != "" ? 1 : 0
+
   zone_id = var.route53_zone_id
   name    = "${var.subdomain}.${var.domain_name}"
   type    = "A"
