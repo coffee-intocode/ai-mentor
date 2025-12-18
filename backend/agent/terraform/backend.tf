@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket = "ai-mentor-terraform-state"
+    bucket = "terraform-state-intersection"
     key    = "terraform.tfstate"
     region = "us-east-2"
   }
