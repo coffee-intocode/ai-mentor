@@ -1,5 +1,6 @@
-# Create hosted zone ONCE at root level
+# Create hosted zone ONCE at root level (only if custom domain is enabled)
 module "dns" {
+  count  = local.custom_domain_enabled ? 1 : 0
   source = "./module/dns"
 
   domain_name = local.domain_name
@@ -10,8 +11,9 @@ module "dns" {
   }
 }
 
-# Create wildcard certificate ONCE at root level
+# Create wildcard certificate ONCE at root level (only if custom domain is enabled)
 module "acm" {
+  count  = local.custom_domain_enabled ? 1 : 0
   source = "./module/acm"
 
   providers = {
@@ -27,7 +29,7 @@ module "acm" {
     # "prod.api.${local.domain_name}",
   ]
 
-  zone_id = module.dns.zone_id
+  zone_id = module.dns[0].zone_id
 
   tags = {
     ManagedBy = "terraform"
@@ -40,10 +42,10 @@ module "staging" {
 
   bastion_ingress     = local.bastion_ingress
   name                = "staging"
-  subdomain           = local.staging_subdomain # Creates stage.api.yourdomain.com
+  subdomain           = local.custom_domain_enabled ? local.staging_subdomain : ""
   domain_name         = local.domain_name
-  route53_zone_id     = module.dns.zone_id
-  acm_certificate_arn = module.acm.certificate_arn
+  route53_zone_id     = local.custom_domain_enabled ? module.dns[0].zone_id : ""
+  acm_certificate_arn = local.custom_domain_enabled ? module.acm[0].certificate_arn : ""
   cors_origins        = var.staging_cors_origins
 }
 
