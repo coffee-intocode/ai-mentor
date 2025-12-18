@@ -20,8 +20,8 @@ module "vpc" {
 
   azs                    = var.availability_zones
   cidr                   = var.cidr
-  database_subnets       = [for az in var.availability_zones : module.subnets.network_cidr_blocks["database-${az}"]]
-  elasticache_subnets    = [for az in var.availability_zones : module.subnets.network_cidr_blocks["elasticache-${az}"]]
+  # database_subnets       = [for az in var.availability_zones : module.subnets.network_cidr_blocks["database-${az}"]]  # Commented out - using Supabase
+  # elasticache_subnets    = [for az in var.availability_zones : module.subnets.network_cidr_blocks["elasticache-${az}"]]  # Commented out - not using Elasticache
   enable_nat_gateway     = true
   intra_subnets          = [for az in var.availability_zones : module.subnets.network_cidr_blocks["intra-${az}"]]
   name                   = var.name

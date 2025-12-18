@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
 from pydantic_ai.builtin_tools import (
@@ -12,8 +12,10 @@ from pydantic_ai.builtin_tools import (
     WebSearchTool,
 )
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agent import agent
+from ..dependencies import get_db
 
 router = APIRouter(tags=["ai-chat"])
 
@@ -113,17 +115,22 @@ def options_chat():
     summary="AI chat with streaming",
     description="Send a message to the AI and get a streaming response",
 )
-async def ai_chat(request: Request) -> Response:
+async def ai_chat(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
     """
     AI chat endpoint with streaming support.
     Uses Vercel AI adapter for streaming responses and supports
     multiple AI models with various built-in tools.
     """
+    from ..agent import AgentDeps
+
     run_input = VercelAIAdapter.build_run_input(await request.body())
     extra_data = ChatRequestExtra.model_validate(run_input.__pydantic_extra__)
+    deps = AgentDeps(db=db)
+
     return await VercelAIAdapter.dispatch_request(
         request,
         agent=agent,
+        deps=deps,
         model=extra_data.model,
         builtin_tools=[BUILTIN_TOOLS[tool_id] for tool_id in extra_data.builtin_tools],
     )

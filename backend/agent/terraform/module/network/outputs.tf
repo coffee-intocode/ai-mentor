@@ -1,10 +1,11 @@
-output "database_security_group" {
-  value = module.security_group_db.security_group_id
-}
-
-output "database_subnets" {
-  value = module.vpc.database_subnets
-}
+# Commented out - using Supabase instead of RDS
+# output "database_security_group" {
+#   value = module.security_group_db.security_group_id
+# }
+#
+# output "database_subnets" {
+#   value = module.vpc.database_subnets
+# }
 
 output "private_security_group" {
   value = module.security_group_private.security_group_id

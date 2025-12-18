@@ -1,9 +1,15 @@
 """Services layer for business logic."""
 
-from .user import UserService
+from .chat import ChatService
 from .conversation import ConversationService
 from .message import MessageService
-from .chat import ChatService
+from .reducto import ReductoService
+from .user import UserService
 
-__all__ = ["UserService", "ConversationService", "MessageService", "ChatService"]
-
+__all__ = [
+    "UserService",
+    "ConversationService",
+    "MessageService",
+    "ChatService",
+    "ReductoService",
+]

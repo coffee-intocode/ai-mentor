@@ -12,7 +12,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:alpine
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_PASSWORD: password
     network_mode: host

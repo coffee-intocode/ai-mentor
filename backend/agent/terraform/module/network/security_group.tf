@@ -27,49 +27,51 @@ module "security_group_bastion" {
   ]
 }
 
-module "security_group_db" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "5.3.0"
+# Commented out - using Supabase instead of RDS
+# module "security_group_db" {
+#   source  = "terraform-aws-modules/security-group/aws"
+#   version = "5.3.0"
+#
+#   description        = "Security group for db subnet"
+#   egress_cidr_blocks = ["0.0.0.0/0"]
+#   name               = "${var.name}-db"
+#   vpc_id             = module.vpc.vpc_id
+#
+#   ingress_with_self = [
+#     {
+#       rule = "all-all"
+#     }
+#   ]
+#
+#   egress_with_cidr_blocks = [
+#     {
+#       rule = "all-all"
+#     }
+#   ]
+# }
 
-  description        = "Security group for db subnet"
-  egress_cidr_blocks = ["0.0.0.0/0"]
-  name               = "${var.name}-db"
-  vpc_id             = module.vpc.vpc_id
-
-  ingress_with_self = [
-    {
-      rule = "all-all"
-    }
-  ]
-
-  egress_with_cidr_blocks = [
-    {
-      rule = "all-all"
-    }
-  ]
-}
-
-module "security_group_elasticache" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "5.3.0"
-
-  description        = "Security group for elasticache subnet"
-  egress_cidr_blocks = ["0.0.0.0/0"]
-  name               = "${var.name}-elasticache"
-  vpc_id             = module.vpc.vpc_id
-
-  ingress_with_self = [
-    {
-      rule = "all-all"
-    }
-  ]
-
-  egress_with_cidr_blocks = [
-    {
-      rule = "all-all"
-    }
-  ]
-}
+# Commented out - not using Elasticache currently
+# module "security_group_elasticache" {
+#   source  = "terraform-aws-modules/security-group/aws"
+#   version = "5.3.0"
+#
+#   description        = "Security group for elasticache subnet"
+#   egress_cidr_blocks = ["0.0.0.0/0"]
+#   name               = "${var.name}-elasticache"
+#   vpc_id             = module.vpc.vpc_id
+#
+#   ingress_with_self = [
+#     {
+#       rule = "all-all"
+#     }
+#   ]
+#
+#   egress_with_cidr_blocks = [
+#     {
+#       rule = "all-all"
+#     }
+#   ]
+# }
 
 module "security_group_private" {
   source  = "terraform-aws-modules/security-group/aws"
@@ -93,20 +95,22 @@ module "security_group_private" {
   ]
 }
 
-resource "aws_vpc_security_group_ingress_rule" "db_allow_private" {
-  description                  = "Allow private subnet to access db"
-  from_port                    = 5432
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = module.security_group_private.security_group_id
-  security_group_id            = module.security_group_db.security_group_id
-  to_port                      = 5432
-}
+# Commented out - using Supabase instead of RDS
+# resource "aws_vpc_security_group_ingress_rule" "db_allow_private" {
+#   description                  = "Allow private subnet to access db"
+#   from_port                    = 5432
+#   ip_protocol                  = "tcp"
+#   referenced_security_group_id = module.security_group_private.security_group_id
+#   security_group_id            = module.security_group_db.security_group_id
+#   to_port                      = 5432
+# }
 
-resource "aws_vpc_security_group_ingress_rule" "elasticache_allow_private" {
-  description                  = "Allow private subnet to access elasticache"
-  from_port                    = 6379
-  ip_protocol                  = "tcp"
-  referenced_security_group_id = module.security_group_private.security_group_id
-  security_group_id            = module.security_group_elasticache.security_group_id
-  to_port                      = 6379
-}
+# Commented out - not using Elasticache currently
+# resource "aws_vpc_security_group_ingress_rule" "elasticache_allow_private" {
+#   description                  = "Allow private subnet to access elasticache"
+#   from_port                    = 6379
+#   ip_protocol                  = "tcp"
+#   referenced_security_group_id = module.security_group_private.security_group_id
+#   security_group_id            = module.security_group_elasticache.security_group_id
+#   to_port                      = 6379
+# }
