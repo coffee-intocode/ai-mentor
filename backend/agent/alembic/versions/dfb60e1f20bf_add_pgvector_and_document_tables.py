@@ -21,6 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
+    op.execute("CREATE SCHEMA IF NOT EXISTS extensions;")
     op.execute("CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;")
 
     op.create_table(
