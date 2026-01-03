@@ -25,7 +25,7 @@ dist-ssr
 /.claude/settings.local.json
 /scratch/
 /agent/.venv/
-/tsconfig.tsbuildinfo
+*.tsbuildinfo
 .env
 
 sample-code/*
@@ -34,3 +34,7 @@ sample-code/*
 *.tfplan
 .terraform
 overrides.txt
+
+sample-code/
+
+.nvim-diagnostics.json
