@@ -30,6 +30,7 @@ import { Part } from './Part'
 import type { ConversationEntry } from './types'
 import { getToolIcon } from '@/lib/tool-icons'
 import { API_ENDPOINTS } from './config'
+import { useAuth } from '@/context/AuthContext'
 
 interface ModelConfig {
   id: string
@@ -61,10 +62,19 @@ const Chat = () => {
   const [input, setInput] = useState('')
   const [model, setModel] = useState<string>('')
   const [enabledTools, setEnabledTools] = useState<string[]>([])
+  const { session } = useAuth()
+
+  const chatTransport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: API_ENDPOINTS.chat,
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+      }),
+    [session?.access_token],
+  )
+
   const { messages, sendMessage, status, setMessages, regenerate } = useChat({
-    transport: new DefaultChatTransport({
-      api: API_ENDPOINTS.chat,
-    }),
+    transport: chatTransport,
   })
   const throttledMessages = useThrottle(messages, 500)
   const [conversationId, setConversationId] = useConversationIdFromUrl()

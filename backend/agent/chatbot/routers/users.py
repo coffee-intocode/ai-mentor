@@ -2,11 +2,15 @@
 
 from fastapi import APIRouter, Depends, status
 
-from ..dependencies import get_user_service
+from ..dependencies import get_current_user, get_user_service
 from ..schemas.user import UserCreate, UserResponse, UserUpdate
 from ..services import UserService
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(
+    prefix="/users",
+    tags=["users"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.post(

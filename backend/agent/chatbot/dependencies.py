@@ -46,3 +46,18 @@ def get_chat_service(db: AsyncSession = Depends(get_db)) -> ChatService:
 def get_reducto_service(db: AsyncSession = Depends(get_db)) -> ReductoService:
     """Get reducto service dependency."""
     return ReductoService(db)
+
+
+# Re-export auth dependencies for convenience
+from .auth import CurrentUser, get_current_user  # noqa: E402
+
+__all__ = [
+    'get_db',
+    'get_user_service',
+    'get_conversation_service',
+    'get_message_service',
+    'get_chat_service',
+    'get_reducto_service',
+    'get_current_user',
+    'CurrentUser',
+]

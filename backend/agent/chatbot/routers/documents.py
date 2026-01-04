@@ -9,11 +9,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db_session
+from ..dependencies import get_current_user
 from ..models import Document, DocumentSection
 from ..services.ingestion import IngestionService
 from ..services.reducto import ReductoService
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(
+    prefix="/documents",
+    tags=["documents"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 class DocumentResponse(BaseModel):
