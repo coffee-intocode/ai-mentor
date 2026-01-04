@@ -2,11 +2,15 @@
 
 from fastapi import APIRouter, Depends, status
 
-from ..dependencies import get_message_service
+from ..dependencies import get_current_user, get_message_service
 from ..schemas.message import MessageCreate, MessageResponse
 from ..services import MessageService
 
-router = APIRouter(prefix="/messages", tags=["messages"])
+router = APIRouter(
+    prefix="/messages",
+    tags=["messages"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.post(

@@ -15,7 +15,7 @@ from pydantic_ai.ui.vercel_ai import VercelAIAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agent import agent
-from ..dependencies import get_db
+from ..dependencies import CurrentUser, get_db
 
 router = APIRouter(tags=["ai-chat"])
 
@@ -115,7 +115,11 @@ def options_chat():
     summary="AI chat with streaming",
     description="Send a message to the AI and get a streaming response",
 )
-async def ai_chat(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+async def ai_chat(
+    request: Request,
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
     """
     AI chat endpoint with streaming support.
     Uses Vercel AI adapter for streaming responses and supports

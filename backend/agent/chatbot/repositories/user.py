@@ -25,3 +25,21 @@ class UserRepository(BaseRepository[User]):
         user = await self.get_by_email(email)
         return user is not None
 
+    async def get_or_create_by_email(self, email: str) -> tuple[User, bool]:
+        """Get existing user or create new one by email.
+
+        Args:
+            email: The user's email address.
+
+        Returns:
+            Tuple of (user, created) where created is True if a new user was created.
+        """
+        user = await self.get_by_email(email)
+        if user:
+            return user, False
+
+        # Create new user
+        user = User(email=email)
+        await self.create(user)
+        return user, True
+

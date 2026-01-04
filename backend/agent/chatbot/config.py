@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     supabase_database_url: str | None = None
     alembic_db_url: str | None = None
 
+    # Supabase Auth
+    supabase_url: str | None = None  # e.g., "https://xxxx.supabase.co"
+
     # API Settings
     api_v1_prefix: str = "/api/v1"
 

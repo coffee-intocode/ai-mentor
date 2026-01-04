@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, status
 
-from ..dependencies import get_conversation_service
+from ..dependencies import get_conversation_service, get_current_user
 from ..schemas.conversation import (
     ConversationCreate,
     ConversationResponse,
@@ -10,7 +10,11 @@ from ..schemas.conversation import (
 )
 from ..services import ConversationService
 
-router = APIRouter(prefix="/conversations", tags=["conversations"])
+router = APIRouter(
+    prefix="/conversations",
+    tags=["conversations"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.post(
