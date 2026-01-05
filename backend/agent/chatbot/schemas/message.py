@@ -29,5 +29,6 @@ class MessageResponse(MessageBase):
 
     id: int
     conversation_id: int
+    owner_id: int
     created_at: datetime
 

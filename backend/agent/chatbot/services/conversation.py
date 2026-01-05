@@ -18,54 +18,49 @@ class ConversationService:
         self.user_repository = UserRepository(db)
 
     async def create_conversation(
-        self, conversation_data: ConversationCreate
+        self, conversation_data: ConversationCreate, owner_id: int
     ) -> Conversation:
-        """Create a new conversation."""
-        # Verify user exists
-        user = await self.user_repository.get_by_id(conversation_data.user_id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
-
+        """Create a new conversation for the specified owner."""
         conversation = Conversation(
-            user_id=conversation_data.user_id, title=conversation_data.title
+            owner_id=owner_id, title=conversation_data.title
         )
         return await self.repository.create(conversation)
 
-    async def get_conversation_by_id(self, conversation_id: int) -> Conversation:
-        """Get conversation by ID."""
+    async def _get_authorized_conversation(
+        self, conversation_id: int, owner_id: int
+    ) -> Conversation:
+        """Get conversation by ID, verifying ownership.
+
+        Returns 404 for both not found and not owned to prevent ID enumeration.
+        """
         conversation = await self.repository.get_by_id(conversation_id)
-        if not conversation:
+        if not conversation or conversation.owner_id != owner_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Conversation not found",
             )
         return conversation
 
-    async def get_user_conversations(self, user_id: int) -> List[Conversation]:
-        """Get all conversations for a user."""
-        # Verify user exists
-        user = await self.user_repository.get_by_id(user_id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
+    async def get_conversation_by_id(
+        self, conversation_id: int, owner_id: int
+    ) -> Conversation:
+        """Get conversation by ID, verifying ownership."""
+        return await self._get_authorized_conversation(conversation_id, owner_id)
 
-        return await self.repository.get_by_user_id(user_id)
+    async def get_owner_conversations(self, owner_id: int) -> List[Conversation]:
+        """Get all conversations for an owner."""
+        return await self.repository.get_by_owner(owner_id)
 
     async def update_conversation(
-        self, conversation_id: int, conversation_data: ConversationUpdate
+        self, conversation_id: int, conversation_data: ConversationUpdate, owner_id: int
     ) -> Conversation:
-        """Update conversation information."""
-        conversation = await self.get_conversation_by_id(conversation_id)
+        """Update conversation information, verifying ownership."""
+        conversation = await self._get_authorized_conversation(conversation_id, owner_id)
         update_data = conversation_data.model_dump(exclude_unset=True)
         return await self.repository.update(conversation, **update_data)
 
-    async def delete_conversation(self, conversation_id: int) -> bool:
-        """Delete a conversation."""
-        conversation = await self.get_conversation_by_id(
-            conversation_id
-        )  # Verify exists
+    async def delete_conversation(self, conversation_id: int, owner_id: int) -> bool:
+        """Delete a conversation, verifying ownership."""
+        conversation = await self._get_authorized_conversation(conversation_id, owner_id)
         return await self.repository.delete(conversation.id)
 

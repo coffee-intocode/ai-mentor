@@ -13,9 +13,12 @@ class ConversationBase(BaseModel):
 
 
 class ConversationCreate(ConversationBase):
-    """Schema for creating a conversation."""
+    """Schema for creating a conversation.
 
-    user_id: int
+    Note: owner_id is not included here as it's derived from the authenticated user.
+    """
+
+    pass
 
 
 class ConversationUpdate(BaseModel):
@@ -30,7 +33,7 @@ class ConversationResponse(ConversationBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    user_id: int
+    owner_id: int
     created_at: datetime
     updated_at: datetime
 

@@ -53,8 +53,13 @@ interface RemoteConfig {
   builtinTools: BuiltinTool[]
 }
 
-async function getModels() {
-  const res = await fetch(API_ENDPOINTS.configure)
+async function getModels(token: string) {
+  const res = await fetch(API_ENDPOINTS.configure, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch config')
+  }
   return (await res.json()) as RemoteConfig
 }
 
@@ -81,7 +86,7 @@ const Chat = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const configQuery = useQuery({
-    queryFn: getModels,
+    queryFn: () => getModels(session?.access_token ?? ''),
     queryKey: ['models'],
   })
 

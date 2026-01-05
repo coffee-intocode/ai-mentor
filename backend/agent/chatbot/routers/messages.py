@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, status
 
-from ..dependencies import get_current_user, get_message_service
+from ..dependencies import CurrentUser, get_current_user, get_message_service
 from ..schemas.message import MessageCreate, MessageResponse
 from ..services import MessageService
 
@@ -22,10 +22,11 @@ router = APIRouter(
 )
 async def create_message(
     message_data: MessageCreate,
+    current_user: CurrentUser,
     service: MessageService = Depends(get_message_service),
 ):
     """Create a new message."""
-    return await service.create_message(message_data)
+    return await service.create_message(message_data, current_user.local_user_id)
 
 
 @router.get(
@@ -35,10 +36,12 @@ async def create_message(
     description="Retrieve a message by its unique ID",
 )
 async def get_message(
-    message_id: int, service: MessageService = Depends(get_message_service)
+    message_id: int,
+    current_user: CurrentUser,
+    service: MessageService = Depends(get_message_service),
 ):
     """Get message by ID."""
-    return await service.get_message_by_id(message_id)
+    return await service.get_message_by_id(message_id, current_user.local_user_id)
 
 
 @router.get(
@@ -48,7 +51,11 @@ async def get_message(
     description="Retrieve all messages in a conversation",
 )
 async def get_conversation_messages(
-    conversation_id: int, service: MessageService = Depends(get_message_service)
+    conversation_id: int,
+    current_user: CurrentUser,
+    service: MessageService = Depends(get_message_service),
 ):
     """Get all messages in a conversation."""
-    return await service.get_conversation_messages(conversation_id)
+    return await service.get_conversation_messages(
+        conversation_id, current_user.local_user_id
+    )

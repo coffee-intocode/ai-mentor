@@ -15,11 +15,11 @@ class ConversationRepository(BaseRepository[Conversation]):
     def __init__(self, db: AsyncSession):
         super().__init__(Conversation, db)
 
-    async def get_by_user_id(self, user_id: int) -> List[Conversation]:
-        """Get all conversations for a specific user."""
+    async def get_by_owner(self, owner_id: int) -> List[Conversation]:
+        """Get all conversations for a specific owner."""
         result = await self.db.execute(
             select(Conversation)
-            .where(Conversation.user_id == user_id)
+            .where(Conversation.owner_id == owner_id)
             .order_by(Conversation.updated_at.desc())
         )
         return list(result.scalars().all())
