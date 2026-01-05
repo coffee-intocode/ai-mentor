@@ -1,4 +1,4 @@
-import { CirclePlus, LogOut, MessageCircle } from 'lucide-react'
+import { CirclePlus, LogOut, MessageCircle, User } from 'lucide-react'
 import { type MouseEvent, useEffect, useState } from 'react'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -25,15 +25,6 @@ import { useConversationIdFromUrl } from '@/hooks/useConversationIdFromUrl'
 import { cn } from '@/lib/utils'
 import type { ConversationEntry } from '@/types'
 import { ModeToggle } from './mode-toggle'
-
-function getUserInitials(email: string | undefined): string {
-  if (!email) return '?'
-  const parts = email.split('@')[0].split(/[._-]/)
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase()
-  }
-  return email.slice(0, 2).toUpperCase()
-}
 
 function useConversations(): ConversationEntry[] {
   const [conversations, setConversations] = useState<ConversationEntry[]>(() => {
@@ -80,7 +71,7 @@ function doLocalNavigation(e: MouseEvent) {
 export function AppSidebar() {
   const conversations = useConversations()
   const [conversationId] = useConversationIdFromUrl()
-  const { user, signOut } = useAuth()
+  const { signOut } = useAuth()
 
   return (
     <Sidebar collapsible="icon">
@@ -139,7 +130,9 @@ export function AppSidebar() {
             <DropdownMenuTrigger asChild>
               <button className="cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                 <Avatar>
-                  <AvatarFallback>{getUserInitials(user?.email)}</AvatarFallback>
+                  <AvatarFallback>
+                    <User className="size-4" />
+                  </AvatarFallback>
                 </Avatar>
               </button>
             </DropdownMenuTrigger>
