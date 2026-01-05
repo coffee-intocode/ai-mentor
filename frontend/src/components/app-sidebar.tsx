@@ -1,6 +1,13 @@
-import { CirclePlus, MessageCircle } from 'lucide-react'
+import { CirclePlus, LogOut, MessageCircle } from 'lucide-react'
 import { type MouseEvent, useEffect, useState } from 'react'
 
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Sidebar,
   SidebarContent,
@@ -13,10 +20,20 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import { useAuth } from '@/context/AuthContext'
 import { useConversationIdFromUrl } from '@/hooks/useConversationIdFromUrl'
 import { cn } from '@/lib/utils'
 import type { ConversationEntry } from '@/types'
 import { ModeToggle } from './mode-toggle'
+
+function getUserInitials(email: string | undefined): string {
+  if (!email) return '?'
+  const parts = email.split('@')[0].split(/[._-]/)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return email.slice(0, 2).toUpperCase()
+}
 
 function useConversations(): ConversationEntry[] {
   const [conversations, setConversations] = useState<ConversationEntry[]>(() => {
@@ -63,6 +80,7 @@ function doLocalNavigation(e: MouseEvent) {
 export function AppSidebar() {
   const conversations = useConversations()
   const [conversationId] = useConversationIdFromUrl()
+  const { user, signOut } = useAuth()
 
   return (
     <Sidebar collapsible="icon">
@@ -116,7 +134,28 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        <ModeToggle />
+        <div className="flex items-center justify-between px-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                <Avatar>
+                  <AvatarFallback>{getUserInitials(user?.email)}</AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start">
+              <DropdownMenuItem
+                onClick={() => {
+                  signOut().catch(console.error)
+                }}
+              >
+                <LogOut />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <ModeToggle />
+        </div>
       </SidebarFooter>
     </Sidebar>
   )

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, status
 
-from ..dependencies import get_conversation_service, get_current_user
+from ..dependencies import CurrentUser, get_conversation_service, get_current_user
 from ..schemas.conversation import (
     ConversationCreate,
     ConversationResponse,
@@ -17,19 +17,34 @@ router = APIRouter(
 )
 
 
+@router.get(
+    "",
+    response_model=list[ConversationResponse],
+    summary="List my conversations",
+    description="Retrieve all conversations for the current user",
+)
+async def list_my_conversations(
+    current_user: CurrentUser,
+    service: ConversationService = Depends(get_conversation_service),
+):
+    """Get all conversations for the current user."""
+    return await service.get_owner_conversations(current_user.local_user_id)
+
+
 @router.post(
     "",
     response_model=ConversationResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new conversation",
-    description="Create a new conversation for a user",
+    description="Create a new conversation for the current user",
 )
 async def create_conversation(
     conversation_data: ConversationCreate,
+    current_user: CurrentUser,
     service: ConversationService = Depends(get_conversation_service),
 ):
     """Create a new conversation."""
-    return await service.create_conversation(conversation_data)
+    return await service.create_conversation(conversation_data, current_user.local_user_id)
 
 
 @router.get(
@@ -40,23 +55,11 @@ async def create_conversation(
 )
 async def get_conversation(
     conversation_id: int,
+    current_user: CurrentUser,
     service: ConversationService = Depends(get_conversation_service),
 ):
     """Get conversation by ID."""
-    return await service.get_conversation_by_id(conversation_id)
-
-
-@router.get(
-    "/user/{user_id}",
-    response_model=list[ConversationResponse],
-    summary="Get user conversations",
-    description="Retrieve all conversations for a specific user",
-)
-async def get_user_conversations(
-    user_id: int, service: ConversationService = Depends(get_conversation_service)
-):
-    """Get all conversations for a user."""
-    return await service.get_user_conversations(user_id)
+    return await service.get_conversation_by_id(conversation_id, current_user.local_user_id)
 
 
 @router.patch(
@@ -68,10 +71,13 @@ async def get_user_conversations(
 async def update_conversation(
     conversation_id: int,
     conversation_data: ConversationUpdate,
+    current_user: CurrentUser,
     service: ConversationService = Depends(get_conversation_service),
 ):
     """Update conversation information."""
-    return await service.update_conversation(conversation_id, conversation_data)
+    return await service.update_conversation(
+        conversation_id, conversation_data, current_user.local_user_id
+    )
 
 
 @router.delete(
@@ -82,7 +88,8 @@ async def update_conversation(
 )
 async def delete_conversation(
     conversation_id: int,
+    current_user: CurrentUser,
     service: ConversationService = Depends(get_conversation_service),
 ):
     """Delete a conversation."""
-    await service.delete_conversation(conversation_id)
+    await service.delete_conversation(conversation_id, current_user.local_user_id)

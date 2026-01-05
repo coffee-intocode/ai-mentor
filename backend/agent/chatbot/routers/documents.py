@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db_session
-from ..dependencies import get_current_user
+from ..dependencies import CurrentUser, get_current_user
 from ..models import Document, DocumentSection
 from ..services.ingestion import IngestionService
 from ..services.reducto import ReductoService
@@ -25,6 +25,7 @@ class DocumentResponse(BaseModel):
     """Response model for document."""
 
     id: int
+    owner_id: int
     filename: str
     status: str
     section_count: int | None = None
@@ -40,6 +41,7 @@ class DocumentResponse(BaseModel):
     summary="Upload and ingest a document",
 )
 async def upload_document(
+    current_user: CurrentUser,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db_session),
 ):
@@ -57,7 +59,9 @@ async def upload_document(
         # Ingest the document
         reducto_service = ReductoService(db)
         ingestion_service = IngestionService(db, reducto_service)
-        document = await ingestion_service.ingest_document(temp_path)
+        document = await ingestion_service.ingest_document(
+            temp_path, owner_id=current_user.local_user_id
+        )
 
         # Count sections
         result = await db.execute(
@@ -67,6 +71,7 @@ async def upload_document(
 
         return DocumentResponse(
             id=document.id,
+            owner_id=document.owner_id,
             filename=document.filename,
             status=document.status,
             section_count=len(sections),
@@ -81,11 +86,17 @@ async def upload_document(
 @router.get(
     "",
     response_model=List[DocumentResponse],
-    summary="List all documents",
+    summary="List my documents",
+    description="Retrieve all documents for the current user",
 )
-async def list_documents(db: AsyncSession = Depends(get_db_session)):
-    """List all ingested documents."""
-    result = await db.execute(select(Document))
+async def list_documents(
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """List all ingested documents for the current user."""
+    result = await db.execute(
+        select(Document).where(Document.owner_id == current_user.local_user_id)
+    )
     documents = result.scalars().all()
 
     response = []
@@ -97,6 +108,7 @@ async def list_documents(db: AsyncSession = Depends(get_db_session)):
         response.append(
             DocumentResponse(
                 id=doc.id,
+                owner_id=doc.owner_id,
                 filename=doc.filename,
                 status=doc.status,
                 section_count=len(sections),

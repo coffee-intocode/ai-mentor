@@ -29,12 +29,13 @@ class IngestionService:
         self.embedding_service = EmbeddingService()
 
     async def ingest_document(
-        self, file_path: Path, parse_options: Optional[dict] = None
+        self, file_path: Path, owner_id: int, parse_options: Optional[dict] = None
     ) -> Document:
         """Ingest a document into the RAG system.
 
         Args:
             file_path: Path to the document file
+            owner_id: ID of the user who owns this document
             parse_options: Optional Reducto parsing configurations
 
         Returns:
@@ -44,6 +45,7 @@ class IngestionService:
             filename=file_path.name,
             source_path=str(file_path),
             status="processing",
+            owner_id=owner_id,
         )
         self.db.add(document)
         await self.db.flush()
