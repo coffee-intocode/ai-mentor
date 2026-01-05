@@ -26,9 +26,8 @@ class JWTVerifier:
     """
 
     def __init__(self, supabase_url: str):
+        self.supabase_url = supabase_url
         self.jwks_url = f'{supabase_url}/auth/v1/.well-known/jwks.json'
-        # PyJWKClient caches keys automatically
-        # lifespan=300 = 5 minute cache (Supabase recommends checking every 10-20 min)
         self._jwks_client = PyJWKClient(self.jwks_url, cache_keys=True, lifespan=300)
 
     async def verify_token(self, token: str) -> dict:
@@ -48,12 +47,12 @@ class JWTVerifier:
             # Get the signing key from JWKS (matched by 'kid' in token header)
             signing_key = self._jwks_client.get_signing_key_from_jwt(token)
 
-            # Decode and verify
             claims = jwt.decode(
                 token,
                 signing_key.key,
                 algorithms=SUPPORTED_ALGORITHMS,
                 audience='authenticated',
+                issuer=f'{self.supabase_url}/auth/v1',
             )
             return claims
 
@@ -61,10 +60,12 @@ class JWTVerifier:
             raise TokenExpiredError()
         except jwt.InvalidAudienceError:
             raise InvalidTokenError('Invalid audience')
+        except jwt.InvalidIssuerError:
+            raise InvalidTokenError('Invalid issuer')
         except jwt.InvalidTokenError as e:
             raise InvalidTokenError(str(e))
-        except Exception as e:
-            raise InvalidTokenError(f'Token verification failed: {e}')
+        except Exception:
+            raise InvalidTokenError('Token verification failed')
 
 
 # Singleton instance
