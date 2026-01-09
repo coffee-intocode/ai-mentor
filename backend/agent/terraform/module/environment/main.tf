@@ -69,6 +69,7 @@ module "service" {
     "ALEMBIC_DB_URL",
     "REDUCTO_API_KEY",
     "VOYAGE_API_KEY",
+    "SUPABASE_URL"
   ]
 }
 
