@@ -3,10 +3,13 @@
 import os
 from typing import List
 
+import logfire
 import voyageai
 from dotenv import load_dotenv
 
 load_dotenv()
+
+EMBEDDING_TIMEOUT = 30.0  # seconds
 
 
 class EmbeddingService:
@@ -23,7 +26,7 @@ class EmbeddingService:
             raise ValueError(
                 "VOYAGE_API_KEY environment variable is required for EmbeddingService"
             )
-        self.client = voyageai.AsyncClient(api_key=api_key)
+        self.client = voyageai.AsyncClient(api_key=api_key, timeout=EMBEDDING_TIMEOUT)
 
     async def create_embedding(
         self, text: str, input_type: str = "query"
@@ -37,9 +40,11 @@ class EmbeddingService:
         Returns:
             List of floats representing the embedding vector (1024 dimensions)
         """
+        logfire.info("Creating embedding for query", query_length=len(text))
         result = await self.client.embed(
             [text], model=self.MODEL_NAME, input_type=input_type
         )
+        logfire.info("Embedding created successfully")
         return result.embeddings[0]
 
     async def create_embeddings(
