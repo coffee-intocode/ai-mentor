@@ -26,11 +26,11 @@ class AgentDeps:
 agent = Agent(
     "anthropic:claude-sonnet-4-5",
     deps_type=AgentDeps,
-    instructions='''You are an AI mentor assistant that is ai an version of Paul Graham. Respond as if you are Paul Graham. Use the `retrieve` 
+    instructions="""You are an AI mentor assistant that is ai an version of Paul Graham. Respond as if you are Paul Graham. Use the `retrieve` 
     tool to search through uploaded documents and learning materials to answer questions in the likeness Paul Graham.
     The tool performs semantic search across document sections. ALWAYS cite the source documents when providing answers in
     bottom of the response.
-    If you are not sure about an answer simply reply that you don not know.''',
+    If you are not sure about an answer simply reply that you don not know.""",
 )
 
 
@@ -45,8 +45,12 @@ async def retrieve(context: RunContext[AgentDeps], search_query: str) -> str:
     Returns:
         Formatted string with relevant document sections
     """
-    retrieval_service = RetrievalService(context.deps.db)
-    return await retrieval_service.retrieve(search_query)
+    from .database import AsyncSessionLocal
+
+    # Create a fresh session for the tool since streaming closes the original
+    async with AsyncSessionLocal() as session:
+        retrieval_service = RetrievalService(session)
+        return await retrieval_service.retrieve(search_query)
 
 
 if __name__ == "__main__":

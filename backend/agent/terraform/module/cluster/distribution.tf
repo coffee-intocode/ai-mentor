@@ -39,11 +39,17 @@ resource "aws_cloudfront_distribution" "this" {
 
     forwarded_values {
       query_string = true
+      headers      = ["Authorization", "Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method"]
 
       cookies {
         forward = "none"
       }
     }
+
+    # Disable caching for authenticated API responses
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
   }
   # Helpful for blocking traffic from certain countries where you don't do business
   restrictions {
