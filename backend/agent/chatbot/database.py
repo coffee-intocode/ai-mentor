@@ -25,6 +25,8 @@ if SUPABASE_URL:
         echo=True,  # Set to False in production
         pool_size=10,
         max_overflow=20,
+        pool_pre_ping=True,  # Detect and recycle stale connections
+        pool_recycle=300,  # Recycle connections after 5 minutes
     )
 
     # Create async session maker
