@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -5,15 +6,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import logfire
 import pydantic_ai
 from pydantic_ai import Agent, RunContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .services.retrieval import RetrievalService
 
-logfire.configure(send_to_logfire="if-token-present", console=False)
-logfire.instrument_pydantic_ai()
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -47,10 +46,19 @@ async def retrieve(context: RunContext[AgentDeps], search_query: str) -> str:
     """
     from .database import AsyncSessionLocal
 
-    # Create a fresh session for the tool since streaming closes the original
-    async with AsyncSessionLocal() as session:
-        retrieval_service = RetrievalService(session)
-        return await retrieval_service.retrieve(search_query)
+    logger.info(f'retrieve tool called: query={search_query[:100]}')
+
+    try:
+        # Create a fresh session for the tool since streaming closes the original
+        async with AsyncSessionLocal() as session:
+            logger.info('retrieve tool: session created')
+            retrieval_service = RetrievalService(session)
+            result = await retrieval_service.retrieve(search_query)
+            logger.info(f'retrieve tool: completed, result_length={len(result)}')
+            return result
+    except Exception as e:
+        logger.exception(f'retrieve tool: exception - {type(e).__name__}: {e}')
+        raise
 
 
 if __name__ == "__main__":
