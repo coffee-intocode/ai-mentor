@@ -1,13 +1,15 @@
 """Embedding service for generating vector embeddings using Voyage AI."""
 
+import logging
 import os
 from typing import List
 
-import logfire
 import voyageai
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 EMBEDDING_TIMEOUT = 30.0  # seconds
 
@@ -40,11 +42,11 @@ class EmbeddingService:
         Returns:
             List of floats representing the embedding vector (1024 dimensions)
         """
-        logfire.info("Creating embedding for query", query_length=len(text))
+        logger.info(f"Creating embedding for query, query_length={len(text)}")
         result = await self.client.embed(
             [text], model=self.MODEL_NAME, input_type=input_type
         )
-        logfire.info("Embedding created successfully")
+        logger.info("Embedding created successfully")
         return result.embeddings[0]
 
     async def create_embeddings(

@@ -1,12 +1,14 @@
 """Retrieval service for RAG-based document search."""
 
+import logging
 from typing import List
 
-import logfire
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .embedding import EmbeddingService
+
+logger = logging.getLogger(__name__)
 
 
 class RetrievalService:
@@ -31,11 +33,11 @@ class RetrievalService:
         Returns:
             Formatted string with retrieved sections
         """
-        logfire.info("Starting retrieval", query=query[:100])
+        logger.info(f"Starting retrieval: query={query[:100]}")
         query_embedding = await self.embedding_service.create_embedding(
             query, input_type="query"
         )
-        logfire.info("Embedding received, executing vector search")
+        logger.info("Embedding received, executing vector search")
 
         # Convert list to pgvector format string
         embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"

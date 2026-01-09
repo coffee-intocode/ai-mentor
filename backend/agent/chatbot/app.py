@@ -1,5 +1,6 @@
 """Main FastAPI application with proper architecture."""
 
+import logging
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -7,7 +8,6 @@ from dotenv import load_dotenv
 # Load environment variables before anything else
 load_dotenv()
 
-import logfire
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -23,6 +23,7 @@ from .routers import (
     users_router,
 )
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
@@ -42,17 +43,22 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    logfire.info("Starting AI Mentor API")
+    logger.info("Starting AI Mentor API")
     yield
     # Shutdown
-    logfire.info("Shutting down AI Mentor API")
+    logger.info("Shutting down AI Mentor API")
 
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
-    # Configure logfire
-    logfire.configure(send_to_logfire="if-token-present")
-    logfire.instrument_pydantic_ai()
+    # Configure logfire if available (optional)
+    try:
+        import logfire
+
+        logfire.configure(send_to_logfire="if-token-present")
+        logfire.instrument_pydantic_ai()
+    except ImportError:
+        logger.info("Logfire not available, skipping instrumentation")
 
     # Create FastAPI app
     app = FastAPI(
@@ -77,8 +83,13 @@ def create_app() -> FastAPI:
     # Add security headers
     app.add_middleware(SecurityHeadersMiddleware)
 
-    # Instrument with logfire
-    logfire.instrument_fastapi(app)
+    # Instrument with logfire if available
+    try:
+        import logfire
+
+        logfire.instrument_fastapi(app)
+    except ImportError:
+        pass
 
     # Include routers
     app.include_router(users_router, prefix=settings.api_v1_prefix)
@@ -118,6 +129,34 @@ def create_app() -> FastAPI:
             health_status["database"] = "not_configured"
 
         return health_status
+
+    # Diagnostic endpoint to test Voyage AI connectivity
+    @app.get("/health/voyage", tags=["health"])
+    async def voyage_health_check():
+        """Test Voyage AI embedding service connectivity."""
+        import asyncio
+        import time
+
+        from .services.embedding import EmbeddingService
+
+        try:
+            start = time.time()
+            service = EmbeddingService()
+            # Use a short test query
+            embedding = await asyncio.wait_for(
+                service.create_embedding("test query", input_type="query"),
+                timeout=15.0,
+            )
+            elapsed = time.time() - start
+            return {
+                "status": "healthy",
+                "embedding_dimension": len(embedding),
+                "response_time_seconds": round(elapsed, 3),
+            }
+        except asyncio.TimeoutError:
+            return {"status": "error", "error": "Voyage AI timeout (15s)"}
+        except Exception as e:
+            return {"status": "error", "error": str(e), "error_type": type(e).__name__}
 
     return app
 
