@@ -31,7 +31,7 @@ customHeaders:
 
 customRules:
   - source: /api/<*>
-    target: https://dwfhdh0pwwnk8.cloudfront.net/api/<*>
+    target: https://dx7vx3kkc0tlj.cloudfront.net/api/<*>
     status: 200
   - source: </^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>
     target: /index.html
