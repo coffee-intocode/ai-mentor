@@ -78,7 +78,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <div className="mt-4 ml-4 flex items-center">
           <h1 className="text-l font-medium text-balance group-data-[state=collapsed]:invisible truncate whitespace-nowrap">
-            Pydantic AI Chat
+            Ai Mentor
           </h1>
 
           <SidebarTrigger className="ml-auto mr-2 group-data-[state=collapsed]:-translate-x-3" />

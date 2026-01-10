@@ -1,11 +1,8 @@
 """AI chat router with pydantic-ai integration."""
 
-import logging
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Request, Response
-
-logger = logging.getLogger(__name__)
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
 from pydantic_ai.builtin_tools import (
@@ -130,25 +127,14 @@ async def ai_chat(
     """
     from ..agent import AgentDeps
 
-    logger.info('ai_chat: starting request processing')
+    run_input = VercelAIAdapter.build_run_input(await request.body())
+    extra_data = ChatRequestExtra.model_validate(run_input.__pydantic_extra__)
+    deps = AgentDeps(db=db)
 
-    try:
-        run_input = VercelAIAdapter.build_run_input(await request.body())
-        extra_data = ChatRequestExtra.model_validate(run_input.__pydantic_extra__)
-        deps = AgentDeps(db=db)
-
-        logger.info(
-            f'ai_chat: dispatching to agent, model={extra_data.model}, '
-            f'builtin_tools={extra_data.builtin_tools}'
-        )
-
-        return await VercelAIAdapter.dispatch_request(
-            request,
-            agent=agent,
-            deps=deps,
-            model=extra_data.model,
-            builtin_tools=[BUILTIN_TOOLS[tool_id] for tool_id in extra_data.builtin_tools],
-        )
-    except Exception as e:
-        logger.exception(f'ai_chat: exception during dispatch - {type(e).__name__}: {e}')
-        raise
+    return await VercelAIAdapter.dispatch_request(
+        request,
+        agent=agent,
+        deps=deps,
+        model=extra_data.model,
+        builtin_tools=[BUILTIN_TOOLS[tool_id] for tool_id in extra_data.builtin_tools],
+    )
