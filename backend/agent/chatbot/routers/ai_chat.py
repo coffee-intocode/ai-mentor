@@ -19,6 +19,7 @@ from ..dependencies import CurrentUser, get_db
 
 router = APIRouter(tags=["ai-chat"])
 
+
 # AI Model and Tool Type Definitions
 AIModelID = Literal[
     "anthropic:claude-sonnet-4-5",
@@ -127,7 +128,9 @@ async def ai_chat(
     """
     from ..agent import AgentDeps
 
-    run_input = VercelAIAdapter.build_run_input(await request.body())
+    # Parse request body
+    body = await request.body()
+    run_input = VercelAIAdapter.build_run_input(body)
     extra_data = ChatRequestExtra.model_validate(run_input.__pydantic_extra__)
     deps = AgentDeps(db=db)
 

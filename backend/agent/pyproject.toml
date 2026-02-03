@@ -32,6 +32,8 @@ dependencies = [
     "python-multipart>=0.0.20",
     "PyJWT[crypto]>=2.8.0",
     "httpx>=0.27.0",
+    "haystack-ai",
+    "opentelemetry-sdk>=1.20.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -42,3 +44,6 @@ exclude = ["testing*", "alembic*"]
 # don't format python in docstrings, pytest-examples takes care of it
 docstring-code-format = false
 quote-style = "single"
+
+[tool.uv.sources]
+haystack-ai = { path = "../../../evals-agent/sdk/python", editable = true }

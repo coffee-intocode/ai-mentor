@@ -1,5 +1,6 @@
 """Main FastAPI application with proper architecture."""
 
+import logging
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -7,6 +8,7 @@ from dotenv import load_dotenv
 # Load environment variables before anything else
 load_dotenv()
 
+import haystack_ai
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -23,6 +25,16 @@ from .routers import (
 )
 
 settings = get_settings()
+
+
+def _configure_logging() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        force=True,
+    )
+    logging.getLogger("chatbot").setLevel(logging.INFO)
+    logging.getLogger("haystack").setLevel(logging.DEBUG)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -47,6 +59,15 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
+
+    _configure_logging()
+
+    haystack_ai.init(
+        api_key="hs_507d85a65a2846dbc481d8c8cf26df67a6969c75",
+        endpoint="http://localhost:8080",
+        environment="local",
+    )
+    # Anthropic (used by pydantic-ai) is auto-instrumented
 
     # Create FastAPI app
     app = FastAPI(
