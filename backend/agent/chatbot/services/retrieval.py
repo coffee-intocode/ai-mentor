@@ -1,11 +1,70 @@
 """Retrieval service for RAG-based document search."""
 
+import json
+import logging
+from dataclasses import dataclass
 from typing import List
+from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .embedding import EmbeddingService
+
+
+@dataclass
+class RetrievalResult:
+    """A single retrieval result with metadata."""
+
+    chunk_id: str
+    document_id: str
+    title: str
+    content: str
+    source: str
+    score: float
+
+
+@dataclass
+class RetrievalResponse:
+    """Response from the retrieval service with structured results."""
+
+    query: str
+    results: List[RetrievalResult]
+
+    def to_formatted_string(self) -> str:
+        """Format results as a string for the LLM."""
+        if not self.results:
+            return "No relevant documents found."
+
+        formatted_results = []
+        for result in self.results:
+            formatted_results.append(
+                f"# {result.title}\n"
+                f"Source: {result.source}\n"
+                f"Score: {result.score:.4f}\n\n"
+                f"{result.content}\n"
+            )
+        return "\n\n---\n\n".join(formatted_results)
+
+    def to_span_attributes(self) -> dict:
+        """Generate span attributes for observability."""
+        results_json = [
+            {
+                "chunk_id": r.chunk_id,
+                "document_id": r.document_id,
+                "score": r.score,
+                "source": r.source,
+            }
+            for r in self.results
+        ]
+        return {
+            "retrieval.query": self.query,
+            "retrieval.results": json.dumps(results_json),
+            "retrieval.chunk_ids": json.dumps([r.chunk_id for r in self.results]),
+            "retrieval.document_ids": json.dumps(
+                list(set(r.document_id for r in self.results))
+            ),
+        }
 
 
 class RetrievalService:
@@ -19,8 +78,9 @@ class RetrievalService:
         """
         self.db = db
         self.embedding_service = EmbeddingService()
+        self._logger = logging.getLogger(__name__)
 
-    async def retrieve(self, query: str, top_k: int = 8) -> str:
+    async def retrieve(self, query: str, top_k: int = 8) -> RetrievalResponse:
         """Retrieve relevant document sections based on a query.
 
         Args:
@@ -28,7 +88,7 @@ class RetrievalService:
             top_k: Number of results to return
 
         Returns:
-            Formatted string with retrieved sections
+            RetrievalResponse with structured results
         """
         query_embedding = await self.embedding_service.create_embedding(
             query, input_type="query"
@@ -39,7 +99,9 @@ class RetrievalService:
 
         sql = text(
             """
-            SELECT 
+            SELECT
+                ds.id as chunk_id,
+                ds.document_id,
                 ds.title,
                 ds.content,
                 d.filename,
@@ -58,15 +120,33 @@ class RetrievalService:
         rows = result.fetchall()
 
         if not rows:
-            return "No relevant documents found."
+            self._logger.info(
+                "Retrieval returned no rows (query=%s)",
+                query,
+            )
+            return RetrievalResponse(query=query, results=[])
 
-        formatted_results = []
+        self._logger.info(
+            "Retrieval returned %s rows (query=%s)",
+            len(rows),
+            query,
+        )
+
+        results = []
         for row in rows:
-            formatted_results.append(
-                f"# {row.title}\n"
-                f"Source: {row.filename}\n"
-                f"Distance: {row.distance:.4f}\n\n"
-                f"{row.content}\n"
+            # Convert UUID to string if needed
+            chunk_id = str(row.chunk_id) if isinstance(row.chunk_id, UUID) else row.chunk_id
+            document_id = str(row.document_id) if isinstance(row.document_id, UUID) else row.document_id
+
+            results.append(
+                RetrievalResult(
+                    chunk_id=chunk_id,
+                    document_id=document_id,
+                    title=row.title,
+                    content=row.content,
+                    source=row.filename,
+                    score=float(row.distance),
+                )
             )
 
-        return "\n\n---\n\n".join(formatted_results)
+        return RetrievalResponse(query=query, results=results)
