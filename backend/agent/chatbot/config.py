@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     google_api_key: str | None = None
     reducto_api_key: str | None = None
     voyage_api_key: str | None = None
+    haystack_api_key: str | None = None
 
     # Security (add these as needed)
     # secret_key: str = "your-secret-key-change-in-production"
