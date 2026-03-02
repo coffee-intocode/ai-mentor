@@ -11,7 +11,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 
 # Download the dependencies
-RUN uv pip install --system --no-cache -r pyproject.toml
+RUN uv pip install --system --no-cache -r pyproject.toml --no-dev
 
 # Copy the source code
 COPY chatbot ./chatbot

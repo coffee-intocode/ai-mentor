@@ -97,8 +97,8 @@ class ChatRequestExtra(BaseModel, extra="ignore", alias_generator=to_camel):
     summary="Get AI configuration",
     description="Get available AI models and tools for frontend configuration",
 )
-async def configure_frontend(current_user: CurrentUser) -> ConfigureFrontend:
-    """Get AI configuration for frontend (requires authentication)."""
+async def configure_frontend() -> ConfigureFrontend:
+    """Get AI configuration for frontend (public endpoint)."""
     return ConfigureFrontend(
         models=AI_MODELS,
         builtin_tools=BUILTIN_TOOL_DEFS,
