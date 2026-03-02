@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 # Load environment variables before anything else
 load_dotenv()
 
-import haystack_ai
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -34,7 +33,6 @@ def _configure_logging() -> None:
         force=True,
     )
     logging.getLogger("chatbot").setLevel(logging.INFO)
-    logging.getLogger("haystack").setLevel(logging.DEBUG)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -62,12 +60,16 @@ def create_app() -> FastAPI:
 
     _configure_logging()
 
-    haystack_ai.init(
-        api_key="hs_507d85a65a2846dbc481d8c8cf26df67a6969c75",
-        endpoint="http://localhost:8080",
-        environment="local",
-    )
-    # Anthropic (used by pydantic-ai) is auto-instrumented
+    try:
+        import haystack_ai
+
+        haystack_ai.init(
+            api_key=settings.haystack_api_key,
+            endpoint="http://localhost:8080",
+            environment="local",
+        )
+    except ImportError:
+        pass
 
     # Create FastAPI app
     app = FastAPI(
