@@ -235,9 +235,6 @@ const Chat = () => {
             body: { model, builtinTools: enabledTools, conversationId: activeConversationId, webSearch: true },
           },
         )
-
-        const storedMessages = await fetchConversationFromDb(session.access_token, activeConversationId)
-        setMessages(storedMessages)
       } finally {
         if (pendingInitialHydrationConversationIdRef.current === activeConversationId) {
           pendingInitialHydrationConversationIdRef.current = null
