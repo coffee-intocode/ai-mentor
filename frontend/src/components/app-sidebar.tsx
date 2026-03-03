@@ -1,14 +1,24 @@
 import { CirclePlus, Ellipsis, LogOut, MessageCircle, Trash2, User } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Sidebar,
   SidebarContent,
@@ -59,6 +69,9 @@ export function AppSidebar() {
   const [conversationId, setConversationId] = useConversationIdFromUrl()
   const { signOut, session } = useAuth()
   const queryClient = useQueryClient()
+  const [deleteTargetConversation, setDeleteTargetConversation] = useState<ConversationListItem | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false)
   const conversationsQuery = useQuery({
     queryKey: ['conversations'],
     queryFn: () => getConversations(session?.access_token ?? ''),
@@ -80,115 +93,176 @@ export function AppSidebar() {
     }
   }
 
+  const handleDeleteDialogChange = (open: boolean) => {
+    if (!open && isDeletingConversation) {
+      return
+    }
+    setDeleteDialogOpen(open)
+    if (!open) {
+      setDeleteTargetConversation(null)
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetConversation) {
+      return
+    }
+
+    setIsDeletingConversation(true)
+    try {
+      await handleDeleteConversation(deleteTargetConversation.id)
+      setDeleteDialogOpen(false)
+      setDeleteTargetConversation(null)
+    } finally {
+      setIsDeletingConversation(false)
+    }
+  }
+
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <div className="mt-4 ml-4 flex items-center">
-          <h1 className="text-l font-medium text-balance group-data-[state=collapsed]:invisible truncate whitespace-nowrap">
-            Ai Mentor
-          </h1>
+    <>
+      <Sidebar collapsible="icon">
+        <SidebarHeader>
+          <div className="mt-4 ml-4 flex items-center">
+            <h1 className="text-l font-medium text-balance group-data-[state=collapsed]:invisible truncate whitespace-nowrap">
+              Ai Mentor
+            </h1>
 
-          <SidebarTrigger className="ml-auto mr-2 group-data-[state=collapsed]:-translate-x-3" />
-        </div>
-      </SidebarHeader>
+            <SidebarTrigger className="ml-auto mr-2 group-data-[state=collapsed]:-translate-x-3" />
+          </div>
+        </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu className="mb-2">
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Start a new conversation">
-                <Link to="/">
-                  <CirclePlus />
-                  <span>New conversation</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {conversations.map((conversation) => (
-                <SidebarMenuItem key={conversation.id}>
-                  <SidebarMenuButton asChild tooltip={conversation.title ?? `Conversation ${conversation.id}`}>
-                    <Link
-                      to={`/${conversation.id}`}
-                      className={cn('h-auto flex items-start gap-2', {
-                        'bg-accent pointer-events-none': `/${conversation.id}` === conversationId,
-                      })}
-                    >
-                      <MessageCircle className="size-3 mt-1" />
-                      <span className="flex flex-col items-start">
-                        <span className="truncate max-w-[150px]">
-                          {conversation.title ?? `Conversation ${conversation.id}`}
-                        </span>
-                        <span className="text-xs opacity-30">
-                          {new Date(conversation.updated_at).toLocaleString()}
-                        </span>
-                      </span>
-                    </Link>
-                  </SidebarMenuButton>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <SidebarMenuAction
-                        showOnHover
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                        }}
-                      >
-                        <Ellipsis />
-                        <span className="sr-only">Conversation actions</span>
-                      </SidebarMenuAction>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent side="right" align="start">
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          handleDeleteConversation(conversation.id).catch((error: unknown) => {
-                            console.error('Error deleting conversation:', error)
-                          })
-                        }}
-                      >
-                        <Trash2 />
-                        <span>Delete</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </SidebarMenuItem>
-              ))}
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarMenu className="mb-2">
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Start a new conversation">
+                  <Link to="/">
+                    <CirclePlus />
+                    <span>New conversation</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
 
-      <SidebarFooter>
-        <div className="flex items-center justify-between px-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                <Avatar>
-                  <AvatarFallback>
-                    <User className="size-4" />
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="start">
-              <DropdownMenuItem
-                onClick={() => {
-                  signOut().catch(console.error)
-                }}
-              >
-                <LogOut />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <ModeToggle />
-        </div>
-      </SidebarFooter>
-    </Sidebar>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {conversations.map((conversation) => (
+                  <SidebarMenuItem key={conversation.id}>
+                    <SidebarMenuButton asChild tooltip={conversation.title ?? `Conversation ${conversation.id}`}>
+                      <Link
+                        to={`/${conversation.id}`}
+                        className={cn('h-auto flex items-start gap-2', {
+                          'bg-accent pointer-events-none': `/${conversation.id}` === conversationId,
+                        })}
+                      >
+                        <MessageCircle className="size-3 mt-1" />
+                        <span className="flex flex-col items-start">
+                          <span className="truncate max-w-[150px]">
+                            {conversation.title ?? `Conversation ${conversation.id}`}
+                          </span>
+                          <span className="text-xs opacity-30">
+                            {new Date(conversation.updated_at).toLocaleString()}
+                          </span>
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuAction
+                          showOnHover
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                          }}
+                        >
+                          <Ellipsis />
+                          <span className="sr-only">Conversation actions</span>
+                        </SidebarMenuAction>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="right" align="start">
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            setDeleteTargetConversation(conversation)
+                            setDeleteDialogOpen(true)
+                          }}
+                        >
+                          <Trash2 />
+                          <span>Delete</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+
+        <SidebarFooter>
+          <div className="flex items-center justify-between px-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  <Avatar>
+                    <AvatarFallback>
+                      <User className="size-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="start">
+                <DropdownMenuItem
+                  onClick={() => {
+                    signOut().catch(console.error)
+                  }}
+                >
+                  <LogOut />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ModeToggle />
+          </div>
+        </SidebarFooter>
+      </Sidebar>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete chat?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete &quot;
+              {deleteTargetConversation?.title ?? `Conversation ${deleteTargetConversation?.id ?? ''}`}&quot; and all
+              of its messages.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                handleDeleteDialogChange(false)
+              }}
+              disabled={isDeletingConversation}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                handleConfirmDelete().catch((error: unknown) => {
+                  console.error('Error deleting conversation:', error)
+                })
+              }}
+              disabled={isDeletingConversation}
+            >
+              {isDeletingConversation ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
