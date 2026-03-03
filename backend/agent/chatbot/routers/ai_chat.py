@@ -13,7 +13,17 @@ from pydantic_ai.builtin_tools import (
     ImageGenerationTool,
     WebSearchTool,
 )
-from pydantic_ai.messages import BuiltinToolCallPart, FilePart, TextPart, ThinkingPart, ToolCallPart
+from pydantic_ai.messages import (
+    BuiltinToolCallPart,
+    BuiltinToolReturnPart,
+    FilePart,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    ThinkingPart,
+    ToolCallPart,
+    ToolReturnPart,
+)
 from pydantic_ai.run import AgentRunResult
 from pydantic_ai.ui.vercel_ai import VercelAIAdapter
 from pydantic_ai.ui.vercel_ai.request_types import TextUIPart, UIMessage
@@ -100,9 +110,21 @@ class ChatRequestExtra(BaseModel, extra="ignore", alias_generator=to_camel):
     conversation_id: int
 
 
+def _to_json_safe(value: Any) -> Any:
+    """Convert arbitrary values into JSON-serializable structures."""
+    try:
+        json.dumps(value)
+        return value
+    except (TypeError, ValueError):
+        try:
+            return json.loads(json.dumps(value, default=str))
+        except (TypeError, ValueError):
+            return repr(value)
+
+
 def _serialize_ui_parts(message: UIMessage) -> list[dict[str, Any]]:
     """Serialize UI message parts for durable storage."""
-    return [part.model_dump(by_alias=True, exclude_none=True) for part in message.parts]
+    return [_to_json_safe(part.model_dump(by_alias=True, exclude_none=True)) for part in message.parts]
 
 
 def _extract_text_from_ui_message(message: UIMessage) -> str:
@@ -125,56 +147,107 @@ def _serialize_assistant_response(
     """Serialize assistant response parts and extract full assistant text."""
     stored_parts: list[dict[str, Any]] = []
     content_parts: list[str] = []
+    tool_part_indexes: dict[str, int] = {}
 
-    for part in result.response.parts:
-        if isinstance(part, TextPart):
-            stored_parts.append({"type": "text", "text": part.content})
-            if part.content:
-                content_parts.append(part.content)
-            continue
+    messages = result.new_messages()
+    if not messages:
+        messages = [result.response]
 
-        if isinstance(part, ThinkingPart):
-            stored_parts.append({"type": "reasoning", "text": part.content})
-            continue
+    for message in messages:
+        if isinstance(message, ModelRequest):
+            for part in message.parts:
+                if not isinstance(part, ToolReturnPart):
+                    continue
 
-        if isinstance(part, BuiltinToolCallPart):
-            stored_parts.append(
-                {
+                tool_output = _to_json_safe(part.content)
+                tool_part = {
                     "type": f"tool-{part.tool_name}",
                     "toolCallId": part.tool_call_id,
-                    "state": "input-available",
-                    "input": part.args_as_dict(),
-                    "providerExecuted": True,
-                }
-            )
-            continue
-
-        if isinstance(part, ToolCallPart):
-            stored_parts.append(
-                {
-                    "type": f"tool-{part.tool_name}",
-                    "toolCallId": part.tool_call_id,
-                    "state": "input-available",
-                    "input": part.args_as_dict(),
+                    "state": "output-available",
+                    "output": tool_output,
                     "providerExecuted": False,
                 }
-            )
+                tool_index = tool_part_indexes.get(part.tool_call_id)
+                if tool_index is not None:
+                    existing_tool_part = stored_parts[tool_index]
+                    existing_tool_part["state"] = "output-available"
+                    existing_tool_part["output"] = tool_output
+                else:
+                    stored_parts.append(tool_part)
             continue
 
-        if isinstance(part, FilePart):
-            stored_parts.append(
-                {
-                    "type": "file",
-                    "mediaType": part.content.media_type,
-                    "url": part.content.data_uri,
+        if not isinstance(message, ModelResponse):
+            continue
+
+        for part in message.parts:
+            if isinstance(part, TextPart):
+                stored_parts.append({"type": "text", "text": part.content})
+                if part.content:
+                    content_parts.append(part.content)
+                continue
+
+            if isinstance(part, ThinkingPart):
+                stored_parts.append({"type": "reasoning", "text": part.content})
+                continue
+
+            if isinstance(part, BuiltinToolCallPart):
+                tool_part_indexes[part.tool_call_id] = len(stored_parts)
+                stored_parts.append(
+                    {
+                        "type": f"tool-{part.tool_name}",
+                        "toolCallId": part.tool_call_id,
+                        "state": "input-available",
+                        "input": part.args_as_dict(),
+                        "providerExecuted": True,
+                    }
+                )
+                continue
+
+            if isinstance(part, ToolCallPart):
+                tool_part_indexes[part.tool_call_id] = len(stored_parts)
+                stored_parts.append(
+                    {
+                        "type": f"tool-{part.tool_name}",
+                        "toolCallId": part.tool_call_id,
+                        "state": "input-available",
+                        "input": part.args_as_dict(),
+                        "providerExecuted": False,
+                    }
+                )
+                continue
+
+            if isinstance(part, BuiltinToolReturnPart):
+                tool_output = _to_json_safe(part.content)
+                tool_part = {
+                    "type": f"tool-{part.tool_name}",
+                    "toolCallId": part.tool_call_id,
+                    "state": "output-available",
+                    "output": tool_output,
+                    "providerExecuted": True,
                 }
-            )
-            continue
+                tool_index = tool_part_indexes.get(part.tool_call_id)
+                if tool_index is not None:
+                    existing_tool_part = stored_parts[tool_index]
+                    existing_tool_part["state"] = "output-available"
+                    existing_tool_part["output"] = tool_output
+                else:
+                    stored_parts.append(tool_part)
+                continue
 
-        stored_parts.append({"type": type(part).__name__, "repr": repr(part)})
+            if isinstance(part, FilePart):
+                stored_parts.append(
+                    {
+                        "type": "file",
+                        "mediaType": part.content.media_type,
+                        "url": part.content.data_uri,
+                    }
+                )
+                continue
+
+            stored_parts.append({"type": type(part).__name__, "repr": repr(part)})
 
     full_text = "\n".join(part for part in content_parts if part).strip()
-    return stored_parts, full_text
+    return [_to_json_safe(part) for part in stored_parts], full_text
 
 
 async def _sync_client_message_ids(
