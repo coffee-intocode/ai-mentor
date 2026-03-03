@@ -1,5 +1,5 @@
-import { CirclePlus, LogOut, MessageCircle, User } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { CirclePlus, Ellipsis, LogOut, MessageCircle, Trash2, User } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -17,6 +17,7 @@ import {
   SidebarGroupContent,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
@@ -44,15 +45,40 @@ async function getConversations(token: string): Promise<ConversationListItem[]> 
   return (await res.json()) as ConversationListItem[]
 }
 
+async function deleteConversation(token: string, conversationId: number): Promise<void> {
+  const res = await fetch(`${API_ENDPOINTS.conversations}/${conversationId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    throw new Error('Failed to delete conversation')
+  }
+}
+
 export function AppSidebar() {
-  const [conversationId] = useConversationIdFromUrl()
+  const [conversationId, setConversationId] = useConversationIdFromUrl()
   const { signOut, session } = useAuth()
+  const queryClient = useQueryClient()
   const conversationsQuery = useQuery({
     queryKey: ['conversations'],
     queryFn: () => getConversations(session?.access_token ?? ''),
     enabled: Boolean(session?.access_token),
   })
   const conversations = conversationsQuery.data ?? []
+
+  const handleDeleteConversation = async (targetConversationId: number) => {
+    const token = session?.access_token
+    if (!token) {
+      return
+    }
+
+    await deleteConversation(token, targetConversationId)
+    await queryClient.invalidateQueries({ queryKey: ['conversations'] })
+
+    if (conversationId === `/${targetConversationId}`) {
+      setConversationId('/')
+    }
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -101,6 +127,35 @@ export function AppSidebar() {
                       </span>
                     </Link>
                   </SidebarMenuButton>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuAction
+                        showOnHover
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                        }}
+                      >
+                        <Ellipsis />
+                        <span className="sr-only">Conversation actions</span>
+                      </SidebarMenuAction>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start">
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          handleDeleteConversation(conversation.id).catch((error: unknown) => {
+                            console.error('Error deleting conversation:', error)
+                          })
+                        }}
+                      >
+                        <Trash2 />
+                        <span>Delete</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
