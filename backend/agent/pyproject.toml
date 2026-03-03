@@ -49,3 +49,5 @@ exclude = ["testing*", "alembic*"]
 docstring-code-format = false
 quote-style = "single"
 
+[tool.uv.sources]
+haystack-ai = { path = "../../../evals-agent/sdk/python", editable = true }

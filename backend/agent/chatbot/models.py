@@ -1,10 +1,11 @@
 """SQLAlchemy models for the application."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base
@@ -65,6 +66,13 @@ class Message(Base):
         String(50), nullable=False
     )  # 'user', 'assistant', 'system'
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    parts_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    client_message_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    superseded_by_message_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

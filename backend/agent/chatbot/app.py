@@ -16,7 +16,6 @@ from starlette.responses import Response
 from .config import get_settings
 from .routers import (
     ai_chat_router,
-    chat_router,
     conversations_router,
     documents_router,
     messages_router,
@@ -99,10 +98,7 @@ def create_app() -> FastAPI:
     app.include_router(conversations_router, prefix=settings.api_v1_prefix)
     app.include_router(messages_router, prefix=settings.api_v1_prefix)
     app.include_router(documents_router, prefix=settings.api_v1_prefix)
-    app.include_router(chat_router, prefix=settings.api_v1_prefix)
-
-    # AI chat router (at /api for backward compatibility with frontend)
-    app.include_router(ai_chat_router, prefix="/api")
+    app.include_router(ai_chat_router, prefix=settings.api_v1_prefix)
 
     # Health check endpoint
     @app.get("/health", tags=["health"])

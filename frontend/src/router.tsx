@@ -18,6 +18,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: '/:conversationId',
+    element: (
+      <PrivateRoute>
+        <App />
+      </PrivateRoute>
+    ),
+  },
+  {
     path: '/auth',
     element: <AuthLayout />,
     children: [

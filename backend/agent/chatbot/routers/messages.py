@@ -1,6 +1,6 @@
 """Message API routes."""
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from ..dependencies import CurrentUser, get_current_user, get_message_service
 from ..schemas.message import MessageCreate, MessageResponse
@@ -53,9 +53,15 @@ async def get_message(
 async def get_conversation_messages(
     conversation_id: int,
     current_user: CurrentUser,
+    include_superseded: bool = Query(
+        default=False,
+        description="Include superseded assistant message versions for debug/replay",
+    ),
     service: MessageService = Depends(get_message_service),
 ):
     """Get all messages in a conversation."""
     return await service.get_conversation_messages(
-        conversation_id, current_user.local_user_id
+        conversation_id,
+        current_user.local_user_id,
+        include_superseded=include_superseded,
     )
