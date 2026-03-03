@@ -59,16 +59,16 @@ def create_app() -> FastAPI:
 
     _configure_logging()
 
-    try:
-        import haystack_ai
+    # try:
+    #     import haystack_ai
 
-        haystack_ai.init(
-            api_key=settings.haystack_api_key,
-            endpoint="http://localhost:8080",
-            environment="local",
-        )
-    except ImportError:
-        pass
+    #     haystack_ai.init(
+    #         api_key=settings.haystack_api_key,
+    #         endpoint="http://localhost:8080",
+    #         environment="local",
+    #     )
+    # except ImportError:
+    #     pass
 
     # Create FastAPI app
     app = FastAPI(

@@ -6,10 +6,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-try:
-    import haystack_ai
-except ImportError:
-    haystack_ai = None
+# try:
+#     import haystack_ai
+# except ImportError:
+#     haystack_ai = None
 from pydantic_ai import Agent, RunContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,10 +56,12 @@ async def retrieve(context: RunContext[AgentDeps], search_query: str) -> str:
 
         response = await retrieval_service.retrieve(search_query)
 
-        # Create a span for retrieval with all attributes
-        if haystack_ai:
-            with haystack_ai.span("retrieval", attributes=response.to_span_attributes()) as span:
-                span.set_attribute("tool.name", "retrieve")
+        # # Create a span for retrieval with all attributes
+        # if haystack_ai:
+        #     with haystack_ai.span(
+        #         "retrieval", attributes=response.to_span_attributes()
+        #     ) as span:
+        #         span.set_attribute("tool.name", "retrieve")
 
         # Log the tool response with structured data
         tool_response = {

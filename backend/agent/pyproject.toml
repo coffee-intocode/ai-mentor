@@ -37,7 +37,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "haystack-ai",
+    # "haystack-ai",
 ]
 
 [tool.setuptools.packages.find]
@@ -50,4 +50,4 @@ docstring-code-format = false
 quote-style = "single"
 
 [tool.uv.sources]
-haystack-ai = { path = "../../../evals-agent/sdk/python", editable = true }
+# haystack-ai = { path = "../../../evals-agent/sdk/python", editable = true }
