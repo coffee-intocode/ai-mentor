@@ -7,8 +7,11 @@ from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
+from .config import get_settings
+
 # Load environment variables
 load_dotenv()
+settings = get_settings()
 
 # Supabase connection URL format: postgresql+asyncpg://user:password@host:port/database
 SUPABASE_URL = os.environ.get("SUPABASE_DATABASE_URL")
@@ -22,7 +25,7 @@ if SUPABASE_URL:
     # Using direct connection (port 5432) - supports prepared statements
     async_engine = create_async_engine(
         SUPABASE_URL,
-        echo=True,  # Set to False in production
+        echo=settings.debug and settings.environment != "production",
         pool_size=10,
         max_overflow=20,
         pool_pre_ping=True,  # Detect and recycle stale connections
