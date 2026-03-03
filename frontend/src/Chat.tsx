@@ -67,6 +67,8 @@ interface BackendMessage {
   created_at: string
 }
 
+type UiPart = UIMessage['parts'][number]
+
 type ApiError = Error & {
   status?: number
   statusCode?: number
@@ -139,16 +141,90 @@ function conversationPathToId(pathname: string): number | null {
   return Number.isNaN(parsed) ? null : parsed
 }
 
-function toUiMessage(message: BackendMessage): UIMessage {
-  const parts =
-    Array.isArray(message.parts_json) && message.parts_json.length > 0
-      ? (message.parts_json as UIMessage['parts'])
-      : ([{ type: 'text', text: message.content }] as UIMessage['parts'])
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
 
+function normalizeStoredPart(part: unknown): UiPart | null {
+  if (!isRecord(part)) {
+    return null
+  }
+
+  const type = part.type
+  if (typeof type !== 'string') {
+    return null
+  }
+
+  if (type === 'text' && typeof part.text === 'string') {
+    return { type: 'text', text: part.text } as UiPart
+  }
+
+  if (type === 'reasoning' && typeof part.text === 'string') {
+    return { type: 'reasoning', text: part.text } as UiPart
+  }
+
+  if (type === 'source-url' && typeof part.url === 'string') {
+    return { type: 'source-url', url: part.url } as UiPart
+  }
+
+  if (type === 'file' && typeof part.url === 'string') {
+    const normalizedFilePart: { type: 'file'; url: string; mediaType?: string } = {
+      type: 'file',
+      url: part.url,
+    }
+    if (typeof part.mediaType === 'string') {
+      normalizedFilePart.mediaType = part.mediaType
+    }
+    return normalizedFilePart as UiPart
+  }
+
+  if (typeof part.toolCallId === 'string') {
+    const normalizedToolPart: Record<string, unknown> = {
+      ...part,
+      type,
+      toolCallId: part.toolCallId,
+    }
+    if (typeof normalizedToolPart.state !== 'string') {
+      normalizedToolPart.state = 'input-available'
+    }
+    return normalizedToolPart as UiPart
+  }
+
+  return null
+}
+
+function normalizeStoredParts(message: BackendMessage): UIMessage['parts'] {
+  if (!Array.isArray(message.parts_json) || message.parts_json.length === 0) {
+    return [{ type: 'text', text: message.content }] as UIMessage['parts']
+  }
+
+  const normalizedParts = message.parts_json
+    .map((part) => normalizeStoredPart(part))
+    .filter((part): part is UiPart => part !== null)
+
+  if (normalizedParts.length !== message.parts_json.length) {
+    console.warn(
+      `Dropped unsupported persisted parts while hydrating message ${message.id}: ` +
+        `${message.parts_json.length - normalizedParts.length} part(s)`,
+    )
+  }
+
+  if (normalizedParts.length === 0) {
+    return [{ type: 'text', text: message.content }] as UIMessage['parts']
+  }
+
+  return normalizedParts as UIMessage['parts']
+}
+
+function isSourceUrlPart(part: UiPart): part is UiPart & { type: 'source-url'; url: string } {
+  return part.type === 'source-url' && 'url' in part && typeof (part as { url?: unknown }).url === 'string'
+}
+
+function toUiMessage(message: BackendMessage): UIMessage {
   return {
     id: message.client_message_id ?? `db-${message.id}`,
     role: message.role,
-    parts,
+    parts: normalizeStoredParts(message),
   } as UIMessage
 }
 
@@ -378,15 +454,14 @@ const Chat = () => {
         <ConversationContent>
           {messages.map((message) => (
             <div key={message.id}>
-              {message.role === 'assistant' &&
-                message.parts.filter((part) => part.type === 'source-url').length > 0 && (
+              {message.role === 'assistant' && message.parts.filter(isSourceUrlPart).length > 0 && (
                   <Sources>
-                    <SourcesTrigger count={message.parts.filter((part) => part.type === 'source-url').length} />
+                    <SourcesTrigger count={message.parts.filter(isSourceUrlPart).length} />
                     {message.parts
-                      .filter((part) => part.type === 'source-url')
+                      .filter(isSourceUrlPart)
                       .map((part, i) => (
                         <SourcesContent key={`${message.id}-${i}`}>
-                          <Source key={`${message.id}-${i}`} href={part.url} title={part.url} />
+                          <Source href={part.url} title={part.url} />
                         </SourcesContent>
                       ))}
                   </Sources>

@@ -284,12 +284,6 @@ async def configure_frontend() -> ConfigureFrontend:
     )
 
 
-@router.options("/stream", summary="CORS preflight for chat stream")
-def options_chat():
-    """Handle CORS preflight request for chat stream endpoint."""
-    pass
-
-
 @router.post(
     "/stream",
     summary="AI chat with streaming",
