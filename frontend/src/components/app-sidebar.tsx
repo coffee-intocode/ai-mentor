@@ -1,5 +1,6 @@
 import { CirclePlus, LogOut, MessageCircle, User } from 'lucide-react'
-import { type MouseEvent, useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -23,55 +24,35 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { useConversationIdFromUrl } from '@/hooks/useConversationIdFromUrl'
 import { cn } from '@/lib/utils'
-import type { ConversationEntry } from '@/types'
+import { API_ENDPOINTS } from '@/config'
 import { ModeToggle } from './mode-toggle'
 
-function useConversations(): ConversationEntry[] {
-  const [conversations, setConversations] = useState<ConversationEntry[]>(() => {
-    const stored = window.localStorage.getItem('conversationIds')
-    return stored ? (JSON.parse(stored) as ConversationEntry[]) : []
-  })
-
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'conversationIds' && e.newValue) {
-        setConversations(JSON.parse(e.newValue) as ConversationEntry[])
-      }
-    }
-
-    const handleCustomStorageChange = () => {
-      const stored = window.localStorage.getItem('conversationIds')
-      setConversations(stored ? (JSON.parse(stored) as ConversationEntry[]) : [])
-    }
-
-    window.addEventListener('storage', handleStorageChange)
-    // a custom event to handle same-tab updates
-    window.addEventListener('local-storage-change', handleCustomStorageChange)
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange)
-      window.removeEventListener('local-storage-change', handleCustomStorageChange)
-    }
-  }, [])
-
-  return conversations
+interface ConversationListItem {
+  id: number
+  title: string | null
+  created_at: string
+  updated_at: string
 }
 
-function doLocalNavigation(e: MouseEvent) {
-  if (e.button !== 0 || e.metaKey || e.ctrlKey) {
-    return
+async function getConversations(token: string): Promise<ConversationListItem[]> {
+  const res = await fetch(API_ENDPOINTS.conversations, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch conversations')
   }
-  const path = new URL((e.currentTarget as HTMLAnchorElement).href).pathname
-  window.history.pushState({}, '', path)
-  // custom event to notify other components of the URL change
-  window.dispatchEvent(new Event('history-state-changed'))
-  e.preventDefault()
+  return (await res.json()) as ConversationListItem[]
 }
 
 export function AppSidebar() {
-  const conversations = useConversations()
   const [conversationId] = useConversationIdFromUrl()
-  const { signOut } = useAuth()
+  const { signOut, session } = useAuth()
+  const conversationsQuery = useQuery({
+    queryKey: ['conversations'],
+    queryFn: () => getConversations(session?.access_token ?? ''),
+    enabled: Boolean(session?.access_token),
+  })
+  const conversations = conversationsQuery.data ?? []
 
   return (
     <Sidebar collapsible="icon">
@@ -90,32 +71,35 @@ export function AppSidebar() {
           <SidebarMenu className="mb-2">
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip="Start a new conversation">
-                <a href="/" onClick={doLocalNavigation}>
+                <Link to="/">
                   <CirclePlus />
                   <span>New conversation</span>
-                </a>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
 
           <SidebarGroupContent>
             <SidebarMenu>
-              {conversations.map((conversation, index) => (
-                <SidebarMenuItem key={index}>
-                  <SidebarMenuButton asChild tooltip={conversation.firstMessage}>
-                    <a
-                      href={conversation.id}
-                      onClick={doLocalNavigation}
+              {conversations.map((conversation) => (
+                <SidebarMenuItem key={conversation.id}>
+                  <SidebarMenuButton asChild tooltip={conversation.title ?? `Conversation ${conversation.id}`}>
+                    <Link
+                      to={`/${conversation.id}`}
                       className={cn('h-auto flex items-start gap-2', {
-                        'bg-accent pointer-events-none': conversation.id === conversationId,
+                        'bg-accent pointer-events-none': `/${conversation.id}` === conversationId,
                       })}
                     >
                       <MessageCircle className="size-3 mt-1" />
                       <span className="flex flex-col items-start">
-                        <span className="truncate max-w-[150px]">{conversation.firstMessage}</span>
-                        <span className="text-xs opacity-30">{new Date(conversation.timestamp).toLocaleString()}</span>
+                        <span className="truncate max-w-[150px]">
+                          {conversation.title ?? `Conversation ${conversation.id}`}
+                        </span>
+                        <span className="text-xs opacity-30">
+                          {new Date(conversation.updated_at).toLocaleString()}
+                        </span>
                       </span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

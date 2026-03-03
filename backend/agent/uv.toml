@@ -1,2 +1,0 @@
-[sources]
-haystack-ai = { path = "../../../evals-agent/sdk/python", editable = true }

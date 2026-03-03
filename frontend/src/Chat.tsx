@@ -19,18 +19,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Switch } from '@/components/ui/switch'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
+import type { UIMessage } from 'ai'
 import { Settings2Icon } from 'lucide-react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 
-import { useQuery } from '@tanstack/react-query'
-import { useThrottle } from '@uidotdev/usehooks'
-import { nanoid } from 'nanoid'
+import { API_ENDPOINTS } from '@/config'
+import { useAuth } from '@/context/AuthContext'
+import { getToolIcon } from '@/lib/tool-icons'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useConversationIdFromUrl } from './hooks/useConversationIdFromUrl'
 import { Part } from './Part'
-import type { ConversationEntry } from './types'
-import { getToolIcon } from '@/lib/tool-icons'
-import { API_ENDPOINTS } from './config'
-import { useAuth } from '@/context/AuthContext'
 
 interface ModelConfig {
   id: string
@@ -38,19 +36,34 @@ interface ModelConfig {
   builtin_tools: string[]
 }
 
-// XXX: hard-code icons
-
 interface BuiltinTool {
   name: string
   id: string
 }
 
-// TODO: if just a single model, don't show model selector, just a label.
 interface RemoteConfig {
-  // hard-code matching icons for popular tools, use default wrench for the unrecognized.
-  // known ones: web_search, code_execution, image_generation, web_fetch
   models: ModelConfig[]
   builtinTools: BuiltinTool[]
+}
+
+interface ConversationResponse {
+  id: number
+  owner_id: number
+  title: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface BackendMessage {
+  id: number
+  conversation_id: number
+  owner_id: number
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  parts_json: Array<Record<string, unknown>>
+  client_message_id: string | null
+  superseded_by_message_id: number | null
+  created_at: string
 }
 
 async function getModels(token: string) {
@@ -63,16 +76,70 @@ async function getModels(token: string) {
   return (await res.json()) as RemoteConfig
 }
 
+async function createConversation(token: string, title: string | null = null): Promise<ConversationResponse> {
+  const res = await fetch(API_ENDPOINTS.conversations, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(title ? { title } : {}),
+  })
+  if (!res.ok) {
+    throw new Error('Failed to create conversation')
+  }
+  return (await res.json()) as ConversationResponse
+}
+
+async function getConversationMessages(token: string, conversationId: number): Promise<BackendMessage[]> {
+  const res = await fetch(API_ENDPOINTS.conversationMessages(conversationId), {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    throw new Error('Failed to fetch conversation messages')
+  }
+  return (await res.json()) as BackendMessage[]
+}
+
+function conversationPathToId(pathname: string): number | null {
+  if (pathname === '/') {
+    return null
+  }
+
+  const maybeId = pathname.startsWith('/') ? pathname.slice(1) : pathname
+  const parsed = Number.parseInt(maybeId, 10)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
+function toUiMessage(message: BackendMessage): UIMessage {
+  const parts =
+    Array.isArray(message.parts_json) && message.parts_json.length > 0
+      ? (message.parts_json as UIMessage['parts'])
+      : ([{ type: 'text', text: message.content }] as UIMessage['parts'])
+
+  return {
+    id: message.client_message_id ?? `db-${message.id}`,
+    role: message.role,
+    parts,
+  } as UIMessage
+}
+
 const Chat = () => {
   const [input, setInput] = useState('')
   const [model, setModel] = useState<string>('')
   const [enabledTools, setEnabledTools] = useState<string[]>([])
   const { session } = useAuth()
+  const [conversationId, setConversationId] = useConversationIdFromUrl()
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const pendingInitialHydrationConversationIdRef = useRef<number | null>(null)
+  const queryClient = useQueryClient()
+
+  const conversationNumericId = useMemo(() => conversationPathToId(conversationId), [conversationId])
 
   const chatTransport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: API_ENDPOINTS.chat,
+        api: API_ENDPOINTS.chatStream,
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       }),
     [session?.access_token],
@@ -80,70 +147,118 @@ const Chat = () => {
 
   const { messages, sendMessage, status, setMessages, regenerate } = useChat({
     transport: chatTransport,
+    onFinish: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] }).catch((error: unknown) => {
+        console.error('Error refreshing conversations:', error)
+      })
+    },
   })
-  const throttledMessages = useThrottle(messages, 500)
-  const [conversationId, setConversationId] = useConversationIdFromUrl()
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const configQuery = useQuery({
     queryFn: () => getModels(session?.access_token ?? ''),
     queryKey: ['models'],
+    enabled: Boolean(session?.access_token),
   })
 
   useEffect(() => {
-    if (configQuery.data) {
+    if (configQuery.data && !model) {
       setModel(configQuery.data.models[0].id)
     }
-  }, [configQuery.data])
+  }, [configQuery.data, model])
+
+  const fetchConversationFromDb = useCallback(
+    async (token: string, targetConversationId: number) => {
+      const storedMessages = await getConversationMessages(token, targetConversationId)
+      return storedMessages.map(toUiMessage)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    const token = session?.access_token
+    if (!token) {
+      return
+    }
+
+    if (conversationNumericId === null) {
+      setMessages([])
+      return
+    }
+
+    if (pendingInitialHydrationConversationIdRef.current === conversationNumericId) {
+      return
+    }
+
+    let isCancelled = false
+    fetchConversationFromDb(token, conversationNumericId)
+      .then((storedMessages) => {
+        if (isCancelled) {
+          return
+        }
+        setMessages(storedMessages)
+      })
+      .catch((error: unknown) => {
+        console.error('Error loading conversation history:', error)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [conversationNumericId, fetchConversationFromDb, session?.access_token, setMessages])
 
   useLayoutEffect(() => {
-    if (conversationId === '/') {
-      setMessages([])
-    } else {
-      const localStorageMessages = window.localStorage.getItem(conversationId)
-      if (localStorageMessages) {
-        setMessages(JSON.parse(localStorageMessages) as typeof messages)
-      }
-    }
     textareaRef.current?.focus()
   }, [conversationId])
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    if (input.trim()) {
-      const theCurrentUrl = new URL(window.location.toString())
+    const trimmedInput = input.trim()
+    if (!trimmedInput || !session?.access_token) {
+      return
+    }
 
-      // we're starting a new conversation
-      if (theCurrentUrl.pathname === '/') {
-        const newConversationId = `/${nanoid()}`
-        setConversationId(newConversationId)
-
-        saveConversationEntryInLocalStorage(newConversationId, input)
-
-        theCurrentUrl.pathname = newConversationId
-        window.history.pushState({}, '', theCurrentUrl.toString())
+    const send = async () => {
+      let activeConversationId = conversationNumericId
+      if (activeConversationId === null) {
+        const newConversation = await createConversation(session.access_token, trimmedInput.slice(0, 120))
+        activeConversationId = newConversation.id
+        pendingInitialHydrationConversationIdRef.current = newConversation.id
+        setConversationId(`/${newConversation.id}`)
+        await queryClient.invalidateQueries({ queryKey: ['conversations'] })
       }
 
-      sendMessage(
-        { text: input },
-        {
-          body: { model, builtinTools: enabledTools, webSearch: true },
-        },
-      ).catch((error: unknown) => {
-        console.error('Error sending message:', error)
-      })
       setInput('')
+      try {
+        await sendMessage(
+          { text: trimmedInput },
+          {
+            body: { model, builtinTools: enabledTools, conversationId: activeConversationId, webSearch: true },
+          },
+        )
+
+        const storedMessages = await fetchConversationFromDb(session.access_token, activeConversationId)
+        setMessages(storedMessages)
+      } finally {
+        if (pendingInitialHydrationConversationIdRef.current === activeConversationId) {
+          pendingInitialHydrationConversationIdRef.current = null
+        }
+      }
     }
+
+    send().catch((error: unknown) => {
+      console.error('Error sending message:', error)
+    })
   }
 
-  useEffect(() => {
-    if (conversationId && throttledMessages.length > 0) {
-      window.localStorage.setItem(conversationId, JSON.stringify(throttledMessages))
-    }
-  }, [throttledMessages, conversationId])
-
   function regen(messageId: string) {
-    regenerate({ messageId }).catch((error: unknown) => {
+    if (conversationNumericId === null) {
+      return
+    }
+
+    regenerate({
+      messageId,
+      body: { model, builtinTools: enabledTools, conversationId: conversationNumericId, webSearch: true },
+    }).catch((error: unknown) => {
       console.error('Error regenerating message:', error)
     })
   }
@@ -152,10 +267,6 @@ const Chat = () => {
     const enabledToolIds = configQuery.data?.models.find((entry) => entry.id === model)?.builtin_tools ?? []
     return configQuery.data?.builtinTools.filter((tool) => enabledToolIds.includes(tool.id)) ?? []
   }, [configQuery.data, model])
-
-  if (conversationId !== '/' && messages.length === 0) {
-    return null
-  }
 
   return (
     <>
@@ -260,16 +371,16 @@ const Chat = () => {
                     <PromptInputModelSelectValue />
                   </PromptInputModelSelectTrigger>
                   <PromptInputModelSelectContent>
-                    {(configQuery.data as { models: { id: string; name: string }[] }).models.map((model) => (
-                      <PromptInputModelSelectItem key={model.id} value={model.id}>
-                        {model.name}
+                    {(configQuery.data as { models: { id: string; name: string }[] }).models.map((modelOption) => (
+                      <PromptInputModelSelectItem key={modelOption.id} value={modelOption.id}>
+                        {modelOption.name}
                       </PromptInputModelSelectItem>
                     ))}
                   </PromptInputModelSelectContent>
                 </PromptInputModelSelect>
               )}
             </PromptInputTools>
-            <PromptInputSubmit disabled={!input} status={status} />
+            <PromptInputSubmit disabled={!input.trim()} status={status} />
           </PromptInputToolbar>
         </PromptInput>
       </div>
@@ -278,22 +389,3 @@ const Chat = () => {
 }
 
 export default Chat
-
-const MAX_FIRST_MESSAGE_LENGTH = 30
-
-function saveConversationEntryInLocalStorage(newConversationId: string, firstMessage: string) {
-  const currentConversations = window.localStorage.getItem('conversationIds') ?? '[]'
-  const conversationIds = JSON.parse(currentConversations) as ConversationEntry[]
-  const trimmedFirstMessage =
-    firstMessage.length > MAX_FIRST_MESSAGE_LENGTH
-      ? firstMessage.slice(0, MAX_FIRST_MESSAGE_LENGTH) + '...'
-      : firstMessage
-  conversationIds.unshift({
-    id: newConversationId,
-    firstMessage: trimmedFirstMessage,
-    timestamp: Date.now(),
-  })
-  window.localStorage.setItem('conversationIds', JSON.stringify(conversationIds))
-  // dispatch a custom event so that the sidebar can update
-  window.dispatchEvent(new Event('local-storage-change'))
-}
