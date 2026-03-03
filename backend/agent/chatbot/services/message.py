@@ -1,6 +1,7 @@
 """Message service for business logic."""
 
 from typing import List
+from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,7 +45,7 @@ class MessageService:
             role=message_data.role,
             content=message_data.content,
             parts_json=message_data.parts_json or _default_parts(message_data.content),
-            client_message_id=message_data.client_message_id,
+            client_message_id=message_data.client_message_id or str(uuid4()),
         )
         return await self.repository.create(message)
 

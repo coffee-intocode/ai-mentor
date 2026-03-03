@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import get_db_session
 from .services import (
+    AiChatService,
     ConversationService,
     MessageService,
     UserService,
@@ -36,6 +37,11 @@ def get_message_service(db: AsyncSession = Depends(get_db)) -> MessageService:
     return MessageService(db)
 
 
+def get_ai_chat_service(db: AsyncSession = Depends(get_db)) -> AiChatService:
+    """Get AI chat service dependency."""
+    return AiChatService(db)
+
+
 # Re-export auth dependencies for convenience
 from .auth import CurrentUser, get_current_user  # noqa: E402
 
@@ -44,6 +50,7 @@ __all__ = [
     'get_user_service',
     'get_conversation_service',
     'get_message_service',
+    'get_ai_chat_service',
     'get_current_user',
     'CurrentUser',
 ]
