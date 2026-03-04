@@ -237,6 +237,7 @@ const Chat = () => {
   const [conversationId, setConversationId] = useConversationIdFromUrl()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const pendingInitialHydrationConversationIdRef = useRef<number | null>(null)
+  const submitInFlightRef = useRef(false)
   const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -373,10 +374,16 @@ const Chat = () => {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
+    if (submitInFlightRef.current || status === 'submitted' || status === 'streaming') {
+      return
+    }
+
     const trimmedInput = input.trim()
     if (!trimmedInput || !session?.access_token) {
       return
     }
+
+    submitInFlightRef.current = true
 
     const send = async () => {
       let activeConversationId = conversationNumericId
@@ -397,8 +404,13 @@ const Chat = () => {
           },
         )
       } catch (error) {
-        if (getErrorStatusCode(error) === 404) {
+        const errorCode = getErrorStatusCode(error)
+        if (errorCode === 404) {
           redirectToRootWithError(conversationNotFoundMessage(activeConversationId))
+          return
+        }
+        if (errorCode === 409) {
+          // Duplicate-submit guard from backend; ignore noisy re-clicks.
           return
         }
         throw error
@@ -411,6 +423,8 @@ const Chat = () => {
 
     send().catch((error: unknown) => {
       console.error('Error sending message:', error)
+    }).finally(() => {
+      submitInFlightRef.current = false
     })
   }
 
@@ -559,7 +573,10 @@ const Chat = () => {
                 </PromptInputModelSelect>
               )}
             </PromptInputTools>
-            <PromptInputSubmit disabled={!input.trim()} status={status} />
+            <PromptInputSubmit
+              disabled={!input.trim() || status === 'submitted' || status === 'streaming'}
+              status={status}
+            />
           </PromptInputToolbar>
         </PromptInput>
       </div>
