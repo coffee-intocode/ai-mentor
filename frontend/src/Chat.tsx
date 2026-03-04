@@ -89,9 +89,7 @@ function getErrorStatusCode(error: unknown): number | null {
 }
 
 function conversationNotFoundMessage(conversationId: number | null): string {
-  return conversationId === null
-    ? 'Unable to load conversation'
-    : `Unable to load conversation ${conversationId}`
+  return conversationId === null ? 'Unable to load conversation' : `Unable to load conversation ${conversationId}`
 }
 
 async function getModels(token: string) {
@@ -274,13 +272,10 @@ const Chat = () => {
     }
   }, [configQuery.data, model])
 
-  const fetchConversationFromDb = useCallback(
-    async (token: string, targetConversationId: number) => {
-      const storedMessages = await getConversationMessages(token, targetConversationId)
-      return storedMessages.map(toUiMessage)
-    },
-    [],
-  )
+  const fetchConversationFromDb = useCallback(async (token: string, targetConversationId: number) => {
+    const storedMessages = await getConversationMessages(token, targetConversationId)
+    return storedMessages.map(toUiMessage)
+  }, [])
 
   const redirectToRootWithError = useCallback(
     (message: string) => {
@@ -409,10 +404,6 @@ const Chat = () => {
           redirectToRootWithError(conversationNotFoundMessage(activeConversationId))
           return
         }
-        if (errorCode === 409) {
-          // Duplicate-submit guard from backend; ignore noisy re-clicks.
-          return
-        }
         throw error
       } finally {
         if (pendingInitialHydrationConversationIdRef.current === activeConversationId) {
@@ -421,11 +412,13 @@ const Chat = () => {
       }
     }
 
-    send().catch((error: unknown) => {
-      console.error('Error sending message:', error)
-    }).finally(() => {
-      submitInFlightRef.current = false
-    })
+    send()
+      .catch((error: unknown) => {
+        console.error('Error sending message:', error)
+      })
+      .finally(() => {
+        submitInFlightRef.current = false
+      })
   }
 
   function regen(messageId: string) {
@@ -469,17 +462,15 @@ const Chat = () => {
           {messages.map((message) => (
             <div key={message.id}>
               {message.role === 'assistant' && message.parts.filter(isSourceUrlPart).length > 0 && (
-                  <Sources>
-                    <SourcesTrigger count={message.parts.filter(isSourceUrlPart).length} />
-                    {message.parts
-                      .filter(isSourceUrlPart)
-                      .map((part, i) => (
-                        <SourcesContent key={`${message.id}-${i}`}>
-                          <Source href={part.url} title={part.url} />
-                        </SourcesContent>
-                      ))}
-                  </Sources>
-                )}
+                <Sources>
+                  <SourcesTrigger count={message.parts.filter(isSourceUrlPart).length} />
+                  {message.parts.filter(isSourceUrlPart).map((part, i) => (
+                    <SourcesContent key={`${message.id}-${i}`}>
+                      <Source href={part.url} title={part.url} />
+                    </SourcesContent>
+                  ))}
+                </Sources>
+              )}
               {message.parts.map((part, i) => (
                 <Part
                   key={`${message.id}-${i}`}
