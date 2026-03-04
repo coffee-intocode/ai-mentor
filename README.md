@@ -4,14 +4,14 @@ A full-stack AI chat application with a production-grade RAG pipeline — ask qu
 
 **Live demo:** [aimentor.up.railway.app](https://aimentor.up.railway.app/)
 
-The demo is loaded with Paul Graham's essays. Try asking:
+The demo is loaded with Paul Graham's essays. Ask about your favorite essay or try asking:
 
-- *"What are the fundamentals for doing things that don't scale?"*
-- *"How can I avoid being default dead in my startup?"*
-- *"How should I think about fundraising for my startup?"*
-- *"How do I find an idea to work on?"*
-- *"How would you advise me to do great work?"*
-- *"If I want to build a startup someday, how should I think about where I live?"*
+- _"What are the fundamentals for doing things that don't scale?"_
+- _"How can I avoid being default dead in my startup?"_
+- _"How should I think about fundraising for my startup?"_
+- _"How do I find an idea to work on?"_
+- _"How would you advise me to do great work?"_
+- _"If I want to build a startup someday, how should I think about where I live?"_
 
 ---
 
@@ -77,15 +77,15 @@ The agent is **agentic RAG**: the LLM decides when retrieval is needed as a tool
 
 ## Tech Stack
 
-| Layer | Technologies |
-|---|---|
-| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS 4, Vercel AI SDK, TanStack Query, shadcn/ui |
-| **Backend** | Python 3.12, FastAPI (async), Pydantic AI, SQLAlchemy 2.0 (async), Alembic, asyncpg |
-| **AI / ML** | Anthropic Claude, OpenAI, Google Gemini, Voyage AI (embeddings), Reducto (doc parsing) |
-| **Database** | PostgreSQL + pgvector via Supabase |
-| **Auth** | Supabase Auth + JWT |
-| **Streaming** | Server-Sent Events (SSE Starlette) |
-| **Deployment** | Docker, AWS ECS + ECR, AWS Amplify, Railway, Terraform |
+| Layer          | Technologies                                                                           |
+| -------------- | -------------------------------------------------------------------------------------- |
+| **Frontend**   | React 19, TypeScript, Vite, Tailwind CSS 4, Vercel AI SDK, TanStack Query, shadcn/ui   |
+| **Backend**    | Python 3.12, FastAPI (async), Pydantic AI, SQLAlchemy 2.0 (async), Alembic, asyncpg    |
+| **AI / ML**    | Anthropic Claude, OpenAI, Google Gemini, Voyage AI (embeddings), Reducto (doc parsing) |
+| **Database**   | PostgreSQL + pgvector via Supabase                                                     |
+| **Auth**       | Supabase Auth + JWT                                                                    |
+| **Streaming**  | Server-Sent Events (SSE Starlette)                                                     |
+| **Deployment** | Docker, AWS ECS + ECR, AWS Amplify, Railway, Terraform                                 |
 
 ---
 
@@ -108,11 +108,12 @@ The agent is **agentic RAG**: the LLM decides when retrieval is needed as a tool
 The demo runs on Railway for cost-effective portfolio hosting. The production-ready AWS infrastructure is fully defined in Terraform under `backend/agent/terraform/`.
 
 ### Demo
-| Component | Hosting |
-|---|---|
-| Backend API | [Railway](https://railway.app/) |
-| Frontend | [Railway](https://railway.app/) |
-| Database | Supabase (managed PostgreSQL + pgvector) |
+
+| Component   | Hosting                                  |
+| ----------- | ---------------------------------------- |
+| Backend API | [Railway](https://railway.app/)          |
+| Frontend    | [Railway](https://railway.app/)          |
+| Database    | Supabase (managed PostgreSQL + pgvector) |
 
 ### Production (Terraform / AWS)
 
@@ -153,6 +154,7 @@ npm run dev           # starts on :5173, proxies /api → :8080
 ```
 
 **Required environment variables** (see `env.example`):
+
 - `SUPABASE_DATABASE_URL`
 - `ANTHROPIC_API_KEY`
 - `VOYAGE_API_KEY`
