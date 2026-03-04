@@ -33,7 +33,7 @@ class PreparedChatRun:
     conversation_id: int
     owner_id: int
     assistant_client_message_id: str
-    superseded_target: Message | None
+    superseded_target_message_id: int | None
 
 
 def to_json_safe(value: Any) -> Any:
@@ -268,7 +268,7 @@ class AiChatService:
             conversation_id=conversation.id,
             owner_id=owner_id,
             assistant_client_message_id=str(uuid4()),
-            superseded_target=superseded_target,
+            superseded_target_message_id=superseded_target.id if superseded_target is not None else None,
         )
 
     async def persist_assistant_completion(
@@ -293,8 +293,10 @@ class AiChatService:
             )
         )
 
-        if prepared_run.superseded_target is not None:
-            prepared_run.superseded_target.superseded_by_message_id = assistant_message.id
+        if prepared_run.superseded_target_message_id is not None:
+            superseded_target = await self.message_repository.get_by_id(prepared_run.superseded_target_message_id)
+            if superseded_target is not None:
+                superseded_target.superseded_by_message_id = assistant_message.id
 
         await self.db.execute(
             update(Conversation)

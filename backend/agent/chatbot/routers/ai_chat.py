@@ -20,6 +20,7 @@ from pydantic_ai.ui.vercel_ai.response_types import BaseChunk, StartChunk
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agent import agent
+from ..database import AsyncSessionLocal
 from ..dependencies import CurrentUser, get_ai_chat_service, get_db
 from ..services import AiChatService
 
@@ -177,10 +178,17 @@ async def ai_chat(
     adapter.persisted_message_id = prepared_run.assistant_client_message_id
 
     async def on_complete(result: AgentRunResult[Any]) -> None:
-        await chat_service.persist_assistant_completion(
-            prepared_run=prepared_run,
-            result=result,
-        )
+        if AsyncSessionLocal is None:  # pragma: no cover
+            raise RuntimeError(
+                "Database not configured. Please set SUPABASE_DATABASE_URL environment variable."
+            )
+        async with AsyncSessionLocal() as completion_db:
+            completion_service = AiChatService(completion_db)
+            await completion_service.persist_assistant_completion(
+                prepared_run=prepared_run,
+                result=result,
+            )
+            await completion_db.commit()
 
     return adapter.streaming_response(
         adapter.run_stream(
