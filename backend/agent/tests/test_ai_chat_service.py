@@ -52,6 +52,12 @@ class _FakeMessageRepository:
                 return message
         return None
 
+    async def get_by_id(self, message_id: int) -> Message | None:
+        for message in self.messages:
+            if message.id == message_id:
+                return message
+        return None
+
 
 class _FakeResult:
     def __init__(self, messages: list[Any]):
@@ -241,4 +247,3 @@ class TestAiChatService(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

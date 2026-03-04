@@ -73,7 +73,7 @@ class _FakeChatService:
             conversation_id=conversation_id,
             owner_id=owner_id,
             assistant_client_message_id='assistant-fixed-id',
-            superseded_target=None,
+            superseded_target_message_id=None,
         )
 
     async def persist_assistant_completion(self, *, prepared_run: PreparedChatRun, result):
@@ -132,4 +132,3 @@ class TestAiChatRouter(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
